@@ -107,9 +107,9 @@ cd D:\ATPM
 & 'C:\Users\松廷\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe' -u .\reproduce_supplementary_fig2b.py --input .\data\ovirs\full --shape .\data\shape\g_12560mm_spc_obj_0000n00000_v014.obj --output .\output\supplementary_fig2b --gamma-min 250 --gamma-max 400 --gamma-step 2 --model-phases 64 --fit-facet-stride 16
 ~~~
 
-公开 L2 探测器辐亮度在 2018-11-02 的均值为 1.1235×10⁻⁴ W cm⁻² μm⁻¹ sr⁻¹；除以 PDS `FILL_FAC` 后，盘面等效均值为 3.0716×10⁻⁴。二者定义不同，不能交叉比较。现已下载官方 SPCv14 12.56 m 替代形状（6,534 顶点、12,288 面元，PDS km 坐标自动换算为 m），并在坑尺度和全局形状尺度加入相互辐射与射线可见性。全部 34,254 帧通过重建 CK 的姿态、IK 的 OVIRS 视轴/FOV、SPK 轨道与 Bennu PCK 自转逐帧求几何；首帧 CK 视轴与 FITS 头的 RA/Dec 一致到约 4×10⁻⁶ 度。
+公开 L2 探测器辐亮度在 2018-11-02 的均值为 1.1235×10⁻⁴ W cm⁻² μm⁻¹ sr⁻¹，与论文图 2b 的量级一致。旧流程额外除以 PDS `FILL_FAC` 得到 3.0716×10⁻⁴，这是错误的拟合口径；现已取消该除法，并直接和 CK/IK 孔径积分模型比较。`FILL_FAC` 只作为诊断字段保留。全部 34,254 帧通过重建 CK 的姿态、IK 的 OVIRS 视轴/FOV、SPK 轨道与 Bennu PCK 自转逐帧求几何；首帧 CK 视轴与 FITS 头的 RA/Dec 一致到约 4×10⁻⁶ 度。
 
-当前 128 坑面元、96 个均匀抽样全局面元、48 相位的精细扫描得到 Γ=248 J m⁻² K⁻¹ s⁻½，但约化 χ²=154.24，明显不是可接受的统计拟合，也不能替代论文的 350±20。这个偏差主要说明公开 L2→论文 L3a 的欠填充 FOV 经验修正未公开，且拟合仍对全局形状作了 1/128 抽样。详见 `output/supplementary_fig2b/summary.json` 和 `PHYSICS_UPGRADE_REPORT.md`。
+改正口径后，当前 128 坑面元、96 个均匀抽样全局面元、48 相位的 Γ=178–192 精细扫描得到 Γ=184 J m⁻² K⁻¹ s⁻½，但约化 χ²=433.14，仍不是可接受的统计拟合，也不能替代论文的 350±20。这个偏差说明绝对量级错误虽已消除，公开 L2→作者 L3a 修正、SPCv14/SPCv13 差异、孔径响应近似和 1/128 形状抽样仍造成显著系统残差。
 
 SPICE 的概念、核文件职责、公式和字段说明见 `SPICE_GEOMETRY.md`；坑分辨率数据见 `output/crater_resolution_convergence.csv`。
 

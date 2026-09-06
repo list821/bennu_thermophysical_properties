@@ -404,7 +404,8 @@ def load_ovirs_lightcurves(
     """Build daily reflected-light-subtracted 4-um curves.
 
     The reflected component is fitted at 1.9-2.1 um with a solar spectral
-    shape.  FOV dilution is removed before each daily curve is normalized.
+    shape.  PDS FILL_FAC is treated as observing metadata, not as an extra
+    radiometric divisor; the calibrated detector radiance is retained.
     One-file format samples are reported but intentionally not fitted.
     """
     minimum_samples = n_bins if minimum_samples is None else minimum_samples
@@ -418,10 +419,10 @@ def load_ovirs_lightcurves(
         if (not np.isfinite(thermal) or thermal <= 0 or not np.isfinite(fill) or fill <= 0
                 or samples == 0):
             continue
-        # Supplementary Fig. 2b is in calibrated disk radiance units.  Remove
-        # dilution by the partially filled OVIRS field of view.
-        corrected = thermal / fill
-        corrected_sigma = max(sigma / fill, abs(corrected) * 0.01)
+        # Supplementary Fig. 2b uses the calibrated OVIRS radiance.  The paper
+        # does not prescribe another division by the geometric FILL_FAC.
+        corrected = thermal
+        corrected_sigma = max(sigma, abs(corrected) * 0.01)
         timestamp = product["mid_obs"]
         day = timestamp.date().isoformat()
         by_day.setdefault(day, []).append((timestamp, corrected, corrected_sigma, fits.name))

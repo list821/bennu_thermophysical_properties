@@ -3,11 +3,12 @@
   "strict_paper_reproduction": false,
   "input_fits": 34254,
   "accepted_frames": 34254,
-  "binning": "1 degree rotational phase; disk-equivalent radiance = L2 detector radiance / PDS FILL_FAC",
+  "binning": "1 degree rotational phase; fit uses reflected-light-subtracted L2 detector radiance without division by PDS FILL_FAC",
   "reflection_removal": "PDS OSIRIS-REx project solar spectrum scaled over 2.05-2.15 um; flat reflectance; Figure 2b samples averaged over 3.98-4.02 um",
   "radiance_products": {
     "detector": "public L2 radiance after reflected-sunlight subtraction",
-    "disk_equivalent": "detector thermal radiance divided by PDS FILL_FAC",
+    "fit_quantity": "detector thermal radiance, compared with the CK/IK aperture-integrated model",
+    "disk_equivalent_diagnostic": "detector thermal radiance divided by PDS FILL_FAC; retained for diagnostics and not fitted",
     "underfilled_fov_warning": "public calibration documentation reports possible artifacts; no author L3a empirical correction array is public"
   },
   "roughness": {
@@ -37,18 +38,18 @@
   "fit_grid_facets": 96,
   "fit_facet_stride": 128,
   "best_fit": {
-    "thermal_inertia": 248.0,
+    "thermal_inertia": 184.0,
     "phase_shift": 0.0,
-    "chi2": 110746.50254119323,
+    "chi2": 310994.1626375793,
     "degrees_of_freedom": 718,
-    "reduced_chi2": 154.2430397509655,
+    "reduced_chi2": 433.1395022807511,
     "delta_chi2_1_interval": [
-      248.0,
-      248.0
+      184.0,
+      184.0
     ],
     "model_discrepancy_scaled_interval": [
-      248.0,
-      248.0
+      183.0,
+      184.0
     ]
   },
   "paper_reference": {
@@ -62,7 +63,8 @@
   },
   "limitations": [
     "public archive contains L2 v2, not authors' processed L3a array",
-    "PDS FILL_FAC removes geometric dilution but cannot reproduce unpublished author-specific underfilled-FOV artifact corrections",
+    "PDS FILL_FAC is a diagnostic occupancy fraction and is not divided into the fitted radiance",
+    "public calibration documentation notes underfilled-FOV artifacts but no author-specific L3a correction array is public",
     "Gamma scan uniformly subsamples shape plates for runtime; plotted curves can use all plates",
     "per-frame SPICE geometry is binned/interpolated to the thermal solver phase grid",
     "reduced chi-square above unity means the formal Delta-chi-square interval is not a reliable physical uncertainty"

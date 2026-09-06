@@ -37,10 +37,9 @@ def process_frames(input_dir: Path, cache: Path) -> list[dict[str, object]]:
     if cache.exists():
         with cache.open("r", newline="", encoding="utf-8") as stream:
             rows = list(csv.DictReader(stream))
-        # Older caches divided by FILL_FAC.  The paper reports FOV occupancy as
-        # observing context but does not prescribe that extra correction; L3a
-        # is already described as radiometrically corrected.  Refuse those
-        # caches so this workflow follows the published reduction literally.
+        # The paper starts from radiometrically corrected spectra and does not
+        # prescribe division by FILL_FAC.  FILL_FAC is retained as a diagnostic
+        # only; the detector radiance is fitted to an aperture-integrated model.
         cache_is_current = (bool(rows) and
                             rows[0].get("band_definition") == "3.98-4.02 um" and
                             rows[0].get("solar_spectrum") == "PDS orexsolarflux.csv")
@@ -54,9 +53,16 @@ def process_frames(input_dir: Path, cache: Path) -> list[dict[str, object]]:
                 fill = float(row["fill_factor"])
                 row["thermal_radiance_detector"] = raw
                 row["sigma_detector"] = raw_sigma
-                row["thermal_radiance"] = raw/fill
-                row["sigma"] = raw_sigma/fill
-                row["radiance_correction"] = "divide_by_PDS_FILL_FAC"
+                row["thermal_radiance"] = raw
+                row["sigma"] = raw_sigma
+                row["disk_equivalent_radiance_diagnostic"] = raw/fill
+                row["radiance_correction"] = "none_PDS_FILL_FAC_is_diagnostic_only"
+            # Persist the corrected semantics so the cache itself is not
+            # misleading when inspected outside this Python process.
+            with cache.open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
+                writer.writeheader()
+                writer.writerows(rows)
             return rows
     rows = []
     print(f"Processing {len(fits_files)} calibrated OVIRS FITS", flush=True)
@@ -73,11 +79,12 @@ def process_frames(input_dir: Path, cache: Path) -> list[dict[str, object]]:
                 "unix_s": timestamp.timestamp(),
                 "thermal_radiance_detector": thermal,
                 "sigma_detector": max(sigma, thermal * 0.002),
-                "thermal_radiance": thermal/fill,
-                "sigma": max(sigma, thermal * 0.002)/fill,
+                "thermal_radiance": thermal,
+                "sigma": max(sigma, thermal * 0.002),
+                "disk_equivalent_radiance_diagnostic": thermal/fill,
                 "fill_factor": fill,
                 "spectral_samples": spectral_samples,
-                "radiance_correction": "divide_by_PDS_FILL_FAC",
+                "radiance_correction": "none_PDS_FILL_FAC_is_diagnostic_only",
                 "band_definition": "3.98-4.02 um",
                 "solar_spectrum": "PDS orexsolarflux.csv",
             })
@@ -148,6 +155,10 @@ def bin_one_degree(rows: list[dict[str, object]], period_hours: float = 4.296061
         value = np.asarray([float(row["thermal_radiance"]) for row in selected])
         detector_value = np.asarray([float(row["thermal_radiance_detector"])
                                      for row in selected])
+        disk_equivalent_value = np.asarray(
+            [float(row.get("disk_equivalent_radiance_diagnostic",
+                           float(row["thermal_radiance_detector"])/float(row["fill_factor"])))
+             for row in selected])
         frame_sigma = np.asarray([float(row["sigma"]) for row in selected])
         bin_index = np.floor(phase * 360).astype(int)
         centers = (np.arange(360) + 0.5) / 360.0
@@ -155,6 +166,7 @@ def bin_one_degree(rows: list[dict[str, object]], period_hours: float = 4.296061
         errors = np.full(360, np.nan)
         counts = np.zeros(360, int)
         detector_means = np.full(360, np.nan)
+        disk_equivalent_means = np.full(360, np.nan)
         fill_means = np.full(360, np.nan)
         sun_direction = np.full((360, 3), np.nan)
         observer_direction = np.full((360, 3), np.nan)
@@ -183,6 +195,7 @@ def bin_one_degree(rows: list[dict[str, object]], period_hours: float = 4.296061
             errors[index] = max(scatter_sem, spectral_sem, means[index] * 0.005)
             kept_indices = np.flatnonzero(mask)[keep]
             detector_means[index] = np.mean(detector_value[kept_indices])
+            disk_equivalent_means[index] = np.mean(disk_equivalent_value[kept_indices])
             fill_means[index] = np.mean([float(selected[j]["fill_factor"])
                                          for j in kept_indices])
             if selected and "sun_x" in selected[0]:
@@ -205,7 +218,9 @@ def bin_one_degree(rows: list[dict[str, object]], period_hours: float = 4.296061
                     fov_half_angle[index] = np.mean(
                         [float(selected[j]["fov_half_angle_rad"]) for j in kept_indices])
         datasets[day] = {"phase": centers, "value": means, "sigma": errors, "count": counts,
-                         "detector_value": detector_means, "pds_fill_factor": fill_means,
+                         "detector_value": detector_means,
+                         "disk_equivalent_diagnostic": disk_equivalent_means,
+                         "pds_fill_factor": fill_means,
                          "sun_direction": sun_direction,
                          "observer_direction": observer_direction,
                          "heliocentric_distance_au": heliocentric_distance,
@@ -282,7 +297,7 @@ def fit_gamma(mesh, datasets, gammas, roughness_fraction, model_phases,
                 result = simulate(mesh, float(gamma), config)
             else:
                 result = simulate(mesh, float(gamma), config, *geometry)
-            curve4, _ = result.mixed(roughness_fraction)
+            curve4 = result.mixed_detector(roughness_fraction)
             model[day][float(gamma)] = curve4 / 1.0e4  # W m-2 -> W cm-2
             gc.collect()
     # SPICE and the SPC model share a body-fixed longitude convention, so a
@@ -326,7 +341,7 @@ def display_models(mesh, datasets, roughness_fraction, model_phases=64,
             print(f"Figure model: {day}, Gamma={gamma:g}", flush=True)
             result = (simulate(mesh, gamma, config) if geometry is None else
                       simulate(mesh, gamma, config, *geometry))
-            curve4, _ = result.mixed(roughness_fraction)
+            curve4 = result.mixed_detector(roughness_fraction)
             output[day][gamma] = curve4 / 1.0e4
     return output
 
@@ -335,16 +350,16 @@ def write_binned_csv(path, datasets):
     with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(["date", "rotation_phase",
-                         "disk_equivalent_thermal_radiance_W_cm-2_um-1_sr-1",
-                         "sigma", "frame_count",
-                         "detector_thermal_radiance_W_cm-2_um-1_sr-1", "PDS_FILL_FAC",
+                         "detector_thermal_radiance_W_cm-2_um-1_sr-1",
+                         "sigma", "frame_count", "PDS_FILL_FAC",
+                         "disk_equivalent_radiance_diagnostic_W_cm-2_um-1_sr-1",
                          "sun_x_IAU_BENNU", "sun_y_IAU_BENNU",
                          "sun_z_IAU_BENNU", "observer_x_IAU_BENNU",
                          "observer_y_IAU_BENNU", "observer_z_IAU_BENNU",
                          "heliocentric_distance_au"])
         for day, data in datasets.items():
             for row in zip(data["phase"], data["value"], data["sigma"], data["count"],
-                           data["detector_value"], data["pds_fill_factor"],
+                           data["pds_fill_factor"], data["disk_equivalent_diagnostic"],
                            data["sun_direction"][:, 0], data["sun_direction"][:, 1],
                            data["sun_direction"][:, 2], data["observer_direction"][:, 0],
                            data["observer_direction"][:, 1], data["observer_direction"][:, 2],
@@ -464,11 +479,12 @@ def main():
         "strict_paper_reproduction": False,
         "input_fits": len(list(args.input.glob("*.fits"))),
         "accepted_frames": len(rows),
-        "binning": "1 degree rotational phase; disk-equivalent radiance = L2 detector radiance / PDS FILL_FAC",
+        "binning": "1 degree rotational phase; fit uses reflected-light-subtracted L2 detector radiance without division by PDS FILL_FAC",
         "reflection_removal": "PDS OSIRIS-REx project solar spectrum scaled over 2.05-2.15 um; flat reflectance; Figure 2b samples averaged over 3.98-4.02 um",
         "radiance_products": {
             "detector": "public L2 radiance after reflected-sunlight subtraction",
-            "disk_equivalent": "detector thermal radiance divided by PDS FILL_FAC",
+            "fit_quantity": "detector thermal radiance, compared with the CK/IK aperture-integrated model",
+            "disk_equivalent_diagnostic": "detector thermal radiance divided by PDS FILL_FAC; retained for diagnostics and not fitted",
             "underfilled_fov_warning": "public calibration documentation reports possible artifacts; no author L3a empirical correction array is public"
         },
         "roughness": {"crater_fraction": 0.77, "rms_slope_deg": 43.0},
@@ -506,7 +522,8 @@ def main():
         "paper_reference": {"thermal_inertia": 350.0, "sigma": 20.0,
                             "figure_curves": [330.0, 350.0, 370.0]},
         "limitations": ["public archive contains L2 v2, not authors' processed L3a array",
-                        "PDS FILL_FAC removes geometric dilution but cannot reproduce unpublished author-specific underfilled-FOV artifact corrections",
+                        "PDS FILL_FAC is a diagnostic occupancy fraction and is not divided into the fitted radiance",
+                        "public calibration documentation notes underfilled-FOV artifacts but no author-specific L3a correction array is public",
                         "Gamma scan uniformly subsamples shape plates for runtime; plotted curves can use all plates",
                         "per-frame SPICE geometry is binned/interpolated to the thermal solver phase grid",
                         "reduced chi-square above unity means the formal Delta-chi-square interval is not a reliable physical uncertainty"],
