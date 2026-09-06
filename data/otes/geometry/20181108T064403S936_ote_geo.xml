@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1700.sch" schematypens="http://purl.oclc.org/dsdl/schematron" ?>
+<Product_Observational
+    xmlns="http://pds.nasa.gov/pds4/pds/v1"
+    xmlns:pds="http://pds.nasa.gov/pds4/pds/v1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation=
+    "http://pds.nasa.gov/pds4/pds/v1 https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1700.xsd">
+    <Identification_Area>
+        <logical_identifier>urn:nasa:pds:orex.otes:geometry:20181108t064403s936_ote_geo.fits</logical_identifier>
+        <version_id>1.0</version_id>
+        <title>OSIRIS-REx OTES Geometry Data Product 2018-11-08T06:44:03.936Z</title>
+        <information_model_version>1.7.0.0</information_model_version>
+        <product_class>Product_Observational</product_class>
+        <Modification_History>
+            <Modification_Detail>
+                <modification_date>2019-02-01</modification_date>
+                <version_id>1.0</version_id>
+                <description>Initial version.</description>
+            </Modification_Detail>
+        </Modification_History>
+    </Identification_Area>
+    <Observation_Area>
+        <Time_Coordinates>
+            <start_date_time>2018-11-08T06:44:03.936Z</start_date_time>
+            <stop_date_time>2018-11-08T07:13:01.920Z</stop_date_time>
+        </Time_Coordinates>
+        <Primary_Result_Summary>
+            <purpose>Observation Geometry</purpose>
+            <processing_level>Raw</processing_level>
+        </Primary_Result_Summary>
+        <Investigation_Area>
+            <name>OSIRIS-REx</name>
+            <type>Mission</type>
+            <Internal_Reference>
+                <lid_reference>urn:nasa:pds:context:investigation:mission.orex</lid_reference>
+                <reference_type>data_to_investigation</reference_type>
+            </Internal_Reference>
+        </Investigation_Area>
+        <Observing_System>
+            <name>OSIRIS-REx Thermal Emission Spectrometer (OTES)</name>
+            <Observing_System_Component>
+                <name>OSIRIS-REx</name>
+                <type>Spacecraft</type>
+                <description>Origins, Spectral Interpretation, Resource Identification, Security - Regolith Explorer Spacecraft</description>
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:instrument_host:spacecraft.orex</lid_reference>
+                    <reference_type>is_instrument_host</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+            <Observing_System_Component>
+                <name>OTES</name>
+                <type>Instrument</type>
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:instrument:otes.orex</lid_reference>
+                    <reference_type>is_instrument</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+        </Observing_System>
+        <Target_Identification>
+            <name>(101955) Bennu</name>
+            <alternate_designation>1999 RQ36</alternate_designation>
+            <type>Asteroid</type>
+            <Internal_Reference>
+                <lid_reference>urn:nasa:pds:context:target:asteroid.101955_bennu</lid_reference>
+                <reference_type>data_to_target</reference_type>
+            </Internal_Reference>
+        </Target_Identification>
+    </Observation_Area>
+    <File_Area_Observational>
+        <File>
+            <file_name>20181108T064403S936_ote_geo.fits</file_name>
+            <creation_date_time>2019-05-07T17:19:03.176Z</creation_date_time>
+            <file_size unit="byte">224640</file_size>
+        </File>
+        <Header>
+            <offset unit="byte">2880</offset>
+            <object_length unit="byte">5760</object_length>
+            <parsing_standard_id>FITS 3.0</parsing_standard_id>
+        </Header>
+        <Table_Binary>
+            <name>geo</name>
+            <offset unit="byte">8640</offset>
+            <records>870</records>
+            <Record_Binary>
+                <fields>22</fields>
+                <groups>0</groups>
+                <record_length unit="byte">247</record_length>
+                <Field_Binary>
+                    <name>sclk_string</name>
+                    <field_number>1</field_number>
+                    <field_location unit="byte">1</field_location>
+                    <data_type>ASCII_String</data_type>
+                    <field_length unit="byte">51</field_length>
+                    <field_format>%51s</field_format>
+                    <description>The SCLK string of the instrument clock.</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>utc</name>
+                    <field_number>2</field_number>
+                    <field_location unit="byte">52</field_location>
+                    <data_type>ASCII_String</data_type>
+                    <field_length unit="byte">51</field_length>
+                    <field_format>%51s</field_format>
+                    <description>The UTC time of the instrument clock</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>latitude</name>
+                    <field_number>3</field_number>
+                    <field_location unit="byte">103</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>deg</unit>
+                    <description>Planetocentric latitude of boresight intersection with the surface. Allowed range +90.0 to -90.0. If Boresight Flag NE 1, then value shall be -9999</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>longitude</name>
+                    <field_number>4</field_number>
+                    <field_location unit="byte">107</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>deg</unit>
+                    <description>Planetocentric longitude of boresight intersection with the surface. Allowed range 0 to 360. If Boresight Flag NE 1, then value shall be -9999</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>ltime</name>
+                    <field_number>5</field_number>
+                    <field_location unit="byte">111</field_location>
+                    <data_type>ASCII_String</data_type>
+                    <field_length unit="byte">51</field_length>
+                    <field_format>%51s</field_format>
+                    <description>Mean local solar time of instrument boresight intersection point with target in the body fixed frame.</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>right_ascension</name>
+                    <field_number>6</field_number>
+                    <field_location unit="byte">162</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>deg</unit>
+                    <description>Boresight Right Ascension (RA) in J2000 frame</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>declination</name>
+                    <field_number>7</field_number>
+                    <field_location unit="byte">166</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>deg</unit>
+                    <description>Boresight Declination (DEC) in J2000 frame</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>boresight_x</name>
+                    <field_number>8</field_number>
+                    <field_location unit="byte">170</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>m</unit>
+                    <description>X-coordinate of boresight intersection with surface of target in planetocentric Cartesian coordinates. Allowed range 0 to 1000.0. If Boresight Flag NE 1, then value shall be -9999</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>boresight_y</name>
+                    <field_number>9</field_number>
+                    <field_location unit="byte">174</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>m</unit>
+                    <description>Y-coordinate of boresight intersection with surface of target in planetocentric Cartesian coordinates. Allowed range 0 to 1000.0. If Boresight Flag NE 1, then value shall be -9999</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>boresight_z</name>
+                    <field_number>10</field_number>
+                    <field_location unit="byte">178</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>m</unit>
+                    <description>Z-coordinate of boresight intersection with surface of target in planetocentric Cartesian coordinates. Allowed range 0 to 1000.0. If Boresight Flag NE 1, then value shall be -9999</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>boresight_direction_x</name>
+                    <field_number>11</field_number>
+                    <field_location unit="byte">182</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <description>X component of unit boresight vector, expressed in target-body-fixed reference frame</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>boresight_direction_y</name>
+                    <field_number>12</field_number>
+                    <field_location unit="byte">186</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <description>Y component of unit boresight vector, expressed in target-body-fixed reference frame</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>boresight_direction_z</name>
+                    <field_number>13</field_number>
+                    <field_location unit="byte">190</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <description>Z component of unit boresight vector, expressed in target-body-fixed reference frame</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>bore_flag</name>
+                    <field_number>14</field_number>
+                    <field_location unit="byte">194</field_location>
+                    <data_type>SignedMSB2</data_type>
+                    <field_length unit="byte">2</field_length>
+                    <field_format>%6d</field_format>
+                    <description>Boresight flag 0-Boresight does not intersect surface of asteroid; 1-Boresight intersects surface of asteroid</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>incidence_angle</name>
+                    <field_number>15</field_number>
+                    <field_location unit="byte">196</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>deg</unit>
+                    <description>Incidence angle. The angle between the vector normal to the surface at the location of the boresight intersection with the surface and the vector pointing at the Sun. If Boresight Flag NE 1, then value shall be -9999. Allowed range is 0.0 to 90.0</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>emission_angle</name>
+                    <field_number>16</field_number>
+                    <field_location unit="byte">200</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>deg</unit>
+                    <description>Emission angle. The angle between the vector normal to the surface at the location of the boresight intersection with the surface and the vector pointing to the Spacecraft. If Boresight Flag NE 1, then value shall be -9999. Allowed range is 0.0 to 90.0</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>phase_angle</name>
+                    <field_number>17</field_number>
+                    <field_location unit="byte">204</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>deg</unit>
+                    <description>Phase Angle. The angle between the vector pointing to the Sun and the vector pointing to the Spacecraft. If Boresight Flag NE 1, then value shall be -9999. Allowed range is 0.0 to 180.0</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>range</name>
+                    <field_number>18</field_number>
+                    <field_location unit="byte">208</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>km</unit>
+                    <description>Range from S/C to boresight intersection</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>target_range</name>
+                    <field_number>19</field_number>
+                    <field_location unit="byte">212</field_location>
+                    <data_type>IEEE754MSBDouble</data_type>
+                    <field_length unit="byte">8</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>km</unit>
+                    <description>Range from S/C to target body center</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>resolution</name>
+                    <field_number>20</field_number>
+                    <field_location unit="byte">220</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <unit>m/deg</unit>
+                    <description>Spatial resolution of data on the surface of Bennu. Geometry calculation from spacecraft range.</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>fov_diameter_distance</name>
+                    <field_number>21</field_number>
+                    <field_location unit="byte">224</field_location>
+                    <data_type>IEEE754MSBSingle</data_type>
+                    <field_length unit="byte">4</field_length>
+                    <field_format>%14.5e</field_format>
+                    <description>The number of fields of view the boresight is offset from the target (Bennu).</description>
+                </Field_Binary>
+                <Field_Binary>
+                    <name>look_type</name>
+                    <field_number>22</field_number>
+                    <field_location unit="byte">228</field_location>
+                    <data_type>ASCII_String</data_type>
+                    <field_length unit="byte">20</field_length>
+                    <field_format>%20s</field_format>
+                    <description>data-look, space-look, or calibration-look</description>
+                </Field_Binary>
+            </Record_Binary>
+        </Table_Binary>
+    </File_Area_Observational>
+</Product_Observational>

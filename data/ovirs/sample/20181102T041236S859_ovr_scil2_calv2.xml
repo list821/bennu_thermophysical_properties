@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1700.sch" schematypens="http://purl.oclc.org/dsdl/schematron" ?>
+<?xml-model href="https://pds.nasa.gov/pds4/disp/v1/PDS4_DISP_1700.sch" schematypens="http://purl.oclc.org/dsdl/schematron" ?>
+<?xml-model href="https://pds.nasa.gov/pds4/geom/v1/PDS4_GEOM_1700_1401.sch" schematypens="http://purl.oclc.org/dsdl/schematron" ?>
+<?xml-model href="https://pds.nasa.gov/pds4/sp/v1/PDS4_SP_1700_1100.sch" schematypens="http://purl.oclc.org/dsdl/schematron" ?>
+<?xml-model href="https://pds.nasa.gov/pds4/orex/v1/orex_ldd_OREX_1400.sch" schematypens="http://purl.oclc.org/dsdl/schematron" ?>
+<Product_Observational
+    xmlns="http://pds.nasa.gov/pds4/pds/v1"
+    xmlns:pds="http://pds.nasa.gov/pds4/pds/v1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:disp="http://pds.nasa.gov/pds4/disp/v1"
+    xmlns:geom="http://pds.nasa.gov/pds4/geom/v1"
+    xmlns:sp="http://pds.nasa.gov/pds4/sp/v1"
+    xmlns:orex="http://pds.nasa.gov/pds4/mission/orex/v1"
+    xsi:schemaLocation=
+    "http://pds.nasa.gov/pds4/pds/v1 https://pds.nasa.gov/pds4/pds/v1/PDS4_PDS_1700.xsd
+    http://pds.nasa.gov/pds4/disp/v1 https://pds.nasa.gov/pds4/disp/v1/PDS4_DISP_1700.xsd
+    http://pds.nasa.gov/pds4/geom/v1 https://pds.nasa.gov/pds4/geom/v1/PDS4_GEOM_1700_1401.xsd
+    http://pds.nasa.gov/pds4/sp/v1 https://pds.nasa.gov/pds4/sp/v1/PDS4_SP_1700_1100.xsd
+    http://pds.nasa.gov/pds4/mission/orex/v1 https://pds.nasa.gov/pds4/mission/orex/v1/PDS4_OREX_1400.xsd">
+    <Identification_Area>
+        <logical_identifier>urn:nasa:pds:orex.ovirs:data_calibrated:20181102t041236s859_ovr_scil2_calv2.fits</logical_identifier>
+        <version_id>2.0</version_id>
+        <title>OSIRIS-REx OVIRS Calibrated Science Data Product (L2) 2018-11-02T04:12:36.859Z</title>
+        <information_model_version>1.7.0.0</information_model_version>
+        <product_class>Product_Observational</product_class>
+        <Modification_History>
+            <Modification_Detail>
+                <modification_date>2019-02-01</modification_date>
+                <version_id>1.0</version_id>
+                <description>Initial version.</description>
+            </Modification_Detail>
+            <Modification_Detail>
+                <modification_date>2022-03-02</modification_date>
+                <version_id>2.0</version_id>
+                <description>Version 2.0 of this data product corrects the incidence, phase and emission angles of measurements in which the instrument bore sight did not intersect Bennu to be -9999 as our documentation states. Previously reported non-intersection incidence, phase and emission angles were calculated using the sub-spacecraft point, which was not consistent with our specification.</description>
+            </Modification_Detail>
+        </Modification_History>
+    </Identification_Area>
+    <Observation_Area>
+        <Time_Coordinates>
+            <start_date_time>2018-11-02T04:12:36.859Z</start_date_time>
+            <stop_date_time>2018-11-02T04:12:36.859Z</stop_date_time>
+        </Time_Coordinates>
+        <Primary_Result_Summary>
+            <purpose>Science</purpose>
+            <processing_level>Calibrated</processing_level>
+        </Primary_Result_Summary>
+        <Investigation_Area>
+            <name>OSIRIS-REx</name>
+            <type>Mission</type>
+            <Internal_Reference>
+                <lid_reference>urn:nasa:pds:context:investigation:mission.orex</lid_reference>
+                <reference_type>data_to_investigation</reference_type>
+            </Internal_Reference>
+        </Investigation_Area>
+        <Observing_System>
+            <name>OSIRIS-REx Visible and InfraRed Spectrometer (OVIRS)</name>
+            <Observing_System_Component>
+                <name>OSIRIS-REx</name>
+                <type>Spacecraft</type>
+                <description>Origins, Spectral Interpretation, Resource Identification, Security - Regolith Explorer Spacecraft</description>
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:instrument_host:spacecraft.orex</lid_reference>
+                    <reference_type>is_instrument_host</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+            <Observing_System_Component>
+                <name>OVIRS</name>
+                <type>Instrument</type>
+                <Internal_Reference>
+                    <lid_reference>urn:nasa:pds:context:instrument:ovirs.orex</lid_reference>
+                    <reference_type>is_instrument</reference_type>
+                </Internal_Reference>
+            </Observing_System_Component>
+        </Observing_System>
+        <Target_Identification>
+            <name>(101955) BENNU</name>
+            <alternate_designation>1999 RQ36</alternate_designation>
+            <type>Asteroid</type>
+            <Internal_Reference>
+                <lid_reference>urn:nasa:pds:context:target:asteroid.101955_bennu</lid_reference>
+                <reference_type>data_to_target</reference_type>
+            </Internal_Reference>
+        </Target_Identification>
+        <Mission_Area>
+            <orex:Time>
+                <orex:expo_ms unit="ms">910.2</orex:expo_ms>
+                <orex:exposure unit="s">0.9102</orex:exposure>
+                <orex:mid_obs>2018-11-02T04:12:36.859Z</orex:mid_obs>
+                <orex:mid_obs_et unit="s">594404026.041286</orex:mid_obs_et>
+                <orex:mid_obs_sclk>3/0594403926.29157</orex:mid_obs_sclk>
+                <orex:utc>2018-11-02T04:12:36.714Z</orex:utc>
+            </orex:Time>
+            <orex:OVIRS_Instrument_Attributes>
+                <orex:fpa_moly_a_temp_x unit="degC">-169.25291350863802</orex:fpa_moly_a_temp_x>
+            </orex:OVIRS_Instrument_Attributes>
+            <orex:Mission_Information>
+                <orex:mission_phase_identifier>app</orex:mission_phase_identifier>
+                <orex:mission_phase_name>Approach</orex:mission_phase_name>
+            </orex:Mission_Information>
+            <orex:Spatial>
+                <orex:bennu_dec unit="deg">-7.45256522794072</orex:bennu_dec>
+                <orex:bennu_ra unit="deg">345.307236785878</orex:bennu_ra>
+                <orex:bennu_radec_quality>BEST:  SPK</orex:bennu_radec_quality>
+                <orex:bennu_radec_target>BENNU</orex:bennu_radec_target>
+                <orex:bore_angle unit="deg">0.0472680721307926</orex:bore_angle>
+                <orex:bore_flag>1</orex:bore_flag>
+                <orex:boresight_range unit="m">197567.42290175</orex:boresight_range>
+                <orex:boresight_x unit="m">200.13463339075</orex:boresight_x>
+                <orex:boresight_y unit="m">115.955508100731</orex:boresight_y>
+                <orex:boresight_z unit="m">-95.61920077141879</orex:boresight_z>
+                <orex:declination unit="deg">-7.41047514211561</orex:declination>
+                <orex:emission_angle unit="deg">66.1540656820943</orex:emission_angle>
+                <orex:fov_fill_factor>0.37</orex:fov_fill_factor>
+                <orex:fov_fill_flag>2</orex:fov_fill_flag>
+                <orex:incidence_angle unit="deg">71.0089039303767</orex:incidence_angle>
+                <orex:latitude unit="deg">-22.460181120347798</orex:latitude>
+                <orex:longitude unit="deg">30.0874670045982</orex:longitude>
+                <orex:phase_angle unit="deg">5.15778448548787</orex:phase_angle>
+                <orex:right_ascension unit="deg">345.328929354283</orex:right_ascension>
+                <orex:semimajor_axis unit="m">1961.77512017705</orex:semimajor_axis>
+                <orex:semiminor_axis unit="m">793.0875305945281</orex:semiminor_axis>
+                <orex:sun_range unit="km">155721920.099458</orex:sun_range>
+                <orex:target_range unit="km">197.757294854278</orex:target_range>
+            </orex:Spatial>
+        </Mission_Area>
+        <Discipline_Area>
+            <disp:Display_Settings>
+                <Local_Internal_Reference>
+                    <local_identifier_reference>Calibrated</local_identifier_reference>
+                    <local_reference_type>display_settings_to_array</local_reference_type>
+                </Local_Internal_Reference>
+                <disp:Display_Direction>
+                    <disp:horizontal_display_axis>Sample</disp:horizontal_display_axis>
+                    <disp:horizontal_display_direction>Left to Right</disp:horizontal_display_direction>
+                    <disp:vertical_display_axis>Line</disp:vertical_display_axis>
+                    <disp:vertical_display_direction>Bottom to Top</disp:vertical_display_direction>
+                </disp:Display_Direction>
+            </disp:Display_Settings>
+            <disp:Display_Settings>
+                <Local_Internal_Reference>
+                    <local_identifier_reference>Quality</local_identifier_reference>
+                    <local_reference_type>display_settings_to_array</local_reference_type>
+                </Local_Internal_Reference>
+                <disp:Display_Direction>
+                    <disp:horizontal_display_axis>Sample</disp:horizontal_display_axis>
+                    <disp:horizontal_display_direction>Left to Right</disp:horizontal_display_direction>
+                    <disp:vertical_display_axis>Line</disp:vertical_display_axis>
+                    <disp:vertical_display_direction>Bottom to Top</disp:vertical_display_direction>
+                </disp:Display_Direction>
+            </disp:Display_Settings>
+            <disp:Display_Settings>
+                <Local_Internal_Reference>
+                    <local_identifier_reference>Center Wavelength</local_identifier_reference>
+                    <local_reference_type>display_settings_to_array</local_reference_type>
+                </Local_Internal_Reference>
+                <disp:Display_Direction>
+                    <disp:horizontal_display_axis>Sample</disp:horizontal_display_axis>
+                    <disp:horizontal_display_direction>Left to Right</disp:horizontal_display_direction>
+                    <disp:vertical_display_axis>Line</disp:vertical_display_axis>
+                    <disp:vertical_display_direction>Bottom to Top</disp:vertical_display_direction>
+                </disp:Display_Direction>
+            </disp:Display_Settings>
+            <disp:Display_Settings>
+                <Local_Internal_Reference>
+                    <local_identifier_reference>Channel Width</local_identifier_reference>
+                    <local_reference_type>display_settings_to_array</local_reference_type>
+                </Local_Internal_Reference>
+                <disp:Display_Direction>
+                    <disp:horizontal_display_axis>Sample</disp:horizontal_display_axis>
+                    <disp:horizontal_display_direction>Left to Right</disp:horizontal_display_direction>
+                    <disp:vertical_display_axis>Line</disp:vertical_display_axis>
+                    <disp:vertical_display_direction>Bottom to Top</disp:vertical_display_direction>
+                </disp:Display_Direction>
+            </disp:Display_Settings>
+            <disp:Display_Settings>
+                <Local_Internal_Reference>
+                    <local_identifier_reference>Temperature Dependence</local_identifier_reference>
+                    <local_reference_type>display_settings_to_array</local_reference_type>
+                </Local_Internal_Reference>
+                <disp:Display_Direction>
+                    <disp:horizontal_display_axis>Sample</disp:horizontal_display_axis>
+                    <disp:horizontal_display_direction>Left to Right</disp:horizontal_display_direction>
+                    <disp:vertical_display_axis>Line</disp:vertical_display_axis>
+                    <disp:vertical_display_direction>Bottom to Top</disp:vertical_display_direction>
+                </disp:Display_Direction>
+            </disp:Display_Settings>
+            <disp:Display_Settings>
+                <Local_Internal_Reference>
+                    <local_identifier_reference>cal_dark</local_identifier_reference>
+                    <local_reference_type>display_settings_to_array</local_reference_type>
+                </Local_Internal_Reference>
+                <disp:Display_Direction>
+                    <disp:horizontal_display_axis>Sample</disp:horizontal_display_axis>
+                    <disp:horizontal_display_direction>Left to Right</disp:horizontal_display_direction>
+                    <disp:vertical_display_axis>Line</disp:vertical_display_axis>
+                    <disp:vertical_display_direction>Bottom to Top</disp:vertical_display_direction>
+                </disp:Display_Direction>
+            </disp:Display_Settings>
+            <disp:Display_Settings>
+                <Local_Internal_Reference>
+                    <local_identifier_reference>Uncertainty</local_identifier_reference>
+                    <local_reference_type>display_settings_to_array</local_reference_type>
+                </Local_Internal_Reference>
+                <disp:Display_Direction>
+                    <disp:horizontal_display_axis>Sample</disp:horizontal_display_axis>
+                    <disp:horizontal_display_direction>Left to Right</disp:horizontal_display_direction>
+                    <disp:vertical_display_axis>Line</disp:vertical_display_axis>
+                    <disp:vertical_display_direction>Bottom to Top</disp:vertical_display_direction>
+                </disp:Display_Direction>
+            </disp:Display_Settings>
+            <geom:Geometry>
+                <geom:SPICE_Kernel_Files>
+                    <geom:SPICE_Kernel_Identification>
+                        <geom:kernel_type>MK</geom:kernel_type>
+                        <geom:spice_kernel_file_name>spoc-digestotes2-2021-03-06T22_20_22.249Z.mk</geom:spice_kernel_file_name>
+                        <geom:kernel_provenance>Reconstructed</geom:kernel_provenance>
+                    </geom:SPICE_Kernel_Identification>
+                </geom:SPICE_Kernel_Files>
+                <geom:Geometry_Orbiter>
+                    <geom:geometry_reference_time_utc>2018-11-02T04:12:36.859Z</geom:geometry_reference_time_utc>
+                    <geom:geometry_reference_time_tdb unit="s">594404026.041286</geom:geometry_reference_time_tdb>
+                </geom:Geometry_Orbiter>
+            </geom:Geometry>
+            <sp:Spectral_Characteristics>
+                <Local_Internal_Reference>
+                    <local_identifier_reference>Calibrated</local_identifier_reference>
+                    <local_reference_type>spectral_characteristics_to_array_object</local_reference_type>
+                </Local_Internal_Reference>
+                <sp:spectrum_format>2D</sp:spectrum_format>
+                <sp:spectral_bin_type>wavelength</sp:spectral_bin_type>
+                <sp:Observation_Parameters>
+                    <sp:number_of_exposures>1</sp:number_of_exposures>
+                    <sp:net_integration_time unit="s">1.2</sp:net_integration_time>
+                    <sp:resolution_limit_wavelength unit="micrometer">0.4</sp:resolution_limit_wavelength>
+                </sp:Observation_Parameters>
+                <sp:Field_of_View>
+                    <sp:description>The OSIRIS-REx Visible and IR Spectrometer (OVIRS) is a point spectrometer with a 4-mrad diameter circular field of view (FOV) that provides spectra over the wavelength range of 0.4–4.3 μm (25,000–2300 cm–1).</sp:description>
+                    <sp:Circular_FOV>
+                        <sp:diameter_angle unit="mrad">4</sp:diameter_angle>
+                    </sp:Circular_FOV>
+                </sp:Field_of_View>
+                <sp:Bin_Description>
+                    <sp:bin_profile_description>The OVIRS calibrated spectrum wavelength binning is described by the three 2d_Array structures labeled as Center_Wavelength, Channel_width and Temperature Dependance.  Center_Wavelength is a 512 element array that give the channel center wavelength in units of micrometer, Channel_Width is also a 512 element array that gives the width (FWHM) of each channel in micrometers. Temperature Dependence is a temperature dependent correction to the Center_Wavelength.  It is applied as an absolute wavelength shift per K from 115 K. The shift is subtracted from the wavelength. Center_Wavelength element 1 corresponds to Channel_Width element 1 and Temperature Dependence element 1</sp:bin_profile_description>
+                    <sp:Spectral_Lookup>
+                        <sp:Bin_Center_Lookup>
+                            <Local_Internal_Reference>
+                                <local_identifier_reference>Center Wavelength</local_identifier_reference>
+                                <local_reference_type>spectral_characteristics_to_bin_center_values</local_reference_type>
+                            </Local_Internal_Reference>
+                        </sp:Bin_Center_Lookup>
+                        <sp:Bin_Width_Lookup>
+                            <Local_Internal_Reference>
+                                <local_identifier_reference>Channel Width</local_identifier_reference>
+                                <local_reference_type>spectral_characteristics_to_bin_width_values</local_reference_type>
+                            </Local_Internal_Reference>
+                        </sp:Bin_Width_Lookup>
+                    </sp:Spectral_Lookup>
+                </sp:Bin_Description>
+            </sp:Spectral_Characteristics>
+        </Discipline_Area>
+    </Observation_Area>
+    <Reference_List>
+        <Internal_Reference>
+            <lidvid_reference>urn:nasa:pds:orex.ovirs:calibration:ovirs_s1a_rad_20151201t000000_20190919t000000_v001.fits::2.0</lidvid_reference>
+            <reference_type>data_to_calibration_product</reference_type>
+            <comment>Radiometric calibration file used in processing. The file can be found in the OVIRS calibration collection.</comment>
+        </Internal_Reference>
+        <Internal_Reference>
+            <lidvid_reference>urn:nasa:pds:orex.ovirs:calibration:ovirs_s1a_oob_20000101t000000_20190918t000000_v002.fits::2.0</lidvid_reference>
+            <reference_type>data_to_calibration_product</reference_type>
+            <comment>Out of band calibration file used in processing. The file can be found in the OVIRS calibration collection.</comment>
+        </Internal_Reference>
+        <Internal_Reference>
+            <lidvid_reference>urn:nasa:pds:orex.ovirs:calibration:ovirs_s1a_bpm_20170808t000000_20500101t000000_v002.fits::2.0</lidvid_reference>
+            <reference_type>data_to_calibration_product</reference_type>
+            <comment>Bad pixel map calibration file used in processing. The file can be found in the OVIRS calibration collection.</comment>
+        </Internal_Reference>
+    </Reference_List>
+    <File_Area_Observational>
+        <File>
+            <file_name>20181102T041236S859_ovr_scil2_calv2.fits</file_name>
+            <creation_date_time>2022-03-03T07:36:21.959Z</creation_date_time>
+            <file_size unit="byte">558720</file_size>
+        </File>
+        <Header>
+            <offset unit="byte">0</offset>
+            <object_length unit="byte">5760</object_length>
+            <parsing_standard_id>FITS 3.0</parsing_standard_id>
+        </Header>
+        <Array_2D_Spectrum>
+            <local_identifier>Calibrated</local_identifier>
+            <offset unit="byte">5760</offset>
+            <axes>2</axes>
+            <axis_index_order>Last Index Fastest</axis_index_order>
+            <description>OVIRS calibrated spectral data. These data are an array of radiance values for each super pixel line in the ROI for a single frame (instrument integration).</description>
+            <Element_Array>
+                <data_type>IEEE754MSBDouble</data_type>
+                <unit>W/cm**2/sr/µm</unit>
+            </Element_Array>
+            <Axis_Array>
+                <axis_name>Line</axis_name>
+                <elements>20</elements>
+                <sequence_number>1</sequence_number>
+            </Axis_Array>
+            <Axis_Array>
+                <axis_name>Sample</axis_name>
+                <elements>512</elements>
+                <sequence_number>2</sequence_number>
+            </Axis_Array>
+        </Array_2D_Spectrum>
+        <Header>
+            <offset unit="byte">89280</offset>
+            <object_length unit="byte">2880</object_length>
+            <parsing_standard_id>FITS 3.0</parsing_standard_id>
+        </Header>
+        <Array_2D>
+            <local_identifier>Quality</local_identifier>
+            <offset unit="byte">92160</offset>
+            <axes>2</axes>
+            <axis_index_order>Last Index Fastest</axis_index_order>
+            <description>Quality indicator of the calibrated frame.</description>
+            <Element_Array>
+                <data_type>SignedMSB4</data_type>
+            </Element_Array>
+            <Axis_Array>
+                <axis_name>Line</axis_name>
+                <elements>20</elements>
+                <sequence_number>1</sequence_number>
+            </Axis_Array>
+            <Axis_Array>
+                <axis_name>Sample</axis_name>
+                <elements>512</elements>
+                <sequence_number>2</sequence_number>
+            </Axis_Array>
+        </Array_2D>
+        <Header>
+            <offset unit="byte">135360</offset>
+            <object_length unit="byte">2880</object_length>
+            <parsing_standard_id>FITS 3.0</parsing_standard_id>
+        </Header>
+        <Array_2D>
+            <local_identifier>Center Wavelength</local_identifier>
+            <offset unit="byte">138240</offset>
+            <axes>2</axes>
+            <axis_index_order>Last Index Fastest</axis_index_order>
+            <description>Wavelengths of the calibrated spectra.</description>
+            <Element_Array>
+                <data_type>IEEE754MSBDouble</data_type>
+                <unit>micrometer</unit>
+            </Element_Array>
+            <Axis_Array>
+                <axis_name>Line</axis_name>
+                <elements>20</elements>
+                <sequence_number>1</sequence_number>
+            </Axis_Array>
+            <Axis_Array>
+                <axis_name>Sample</axis_name>
+                <elements>512</elements>
+                <sequence_number>2</sequence_number>
+            </Axis_Array>
+        </Array_2D>
+        <Array_2D>
+            <local_identifier>Channel Width</local_identifier>
+            <offset unit="byte">220160</offset>
+            <axes>2</axes>
+            <axis_index_order>Last Index Fastest</axis_index_order>
+            <description>Channel widths (FWHM) of the spectral wavelength bins.</description>
+            <Element_Array>
+                <data_type>IEEE754MSBDouble</data_type>
+                <unit>micrometer</unit>
+            </Element_Array>
+            <Axis_Array>
+                <axis_name>Line</axis_name>
+                <elements>20</elements>
+                <sequence_number>1</sequence_number>
+            </Axis_Array>
+            <Axis_Array>
+                <axis_name>Sample</axis_name>
+                <elements>512</elements>
+                <sequence_number>2</sequence_number>
+            </Axis_Array>
+        </Array_2D>
+        <Array_2D>
+            <local_identifier>Temperature Dependence</local_identifier>
+            <offset unit="byte">302080</offset>
+            <axes>2</axes>
+            <axis_index_order>Last Index Fastest</axis_index_order>
+            <description>Wavelength offset due to temperature dependence. The wavelength correction is absolute wavelength shift per K difference from 115 K. The shift is subtracted from the center_wavelength. This value may be very close to zero.</description>
+            <Element_Array>
+                <data_type>IEEE754MSBDouble</data_type>
+                <unit>micrometer</unit>
+            </Element_Array>
+            <Axis_Array>
+                <axis_name>Line</axis_name>
+                <elements>20</elements>
+                <sequence_number>1</sequence_number>
+            </Axis_Array>
+            <Axis_Array>
+                <axis_name>Sample</axis_name>
+                <elements>512</elements>
+                <sequence_number>2</sequence_number>
+            </Axis_Array>
+        </Array_2D>
+        <Header>
+            <offset unit="byte">385920</offset>
+            <object_length unit="byte">2880</object_length>
+            <parsing_standard_id>FITS 3.0</parsing_standard_id>
+        </Header>
+        <Array_2D>
+            <local_identifier>cal_dark</local_identifier>
+            <offset unit="byte">388800</offset>
+            <axes>2</axes>
+            <axis_index_order>Last Index Fastest</axis_index_order>
+            <description>Dark values subtracted from L0 science product before conversion to radiance.</description>
+            <Element_Array>
+                <data_type>IEEE754MSBDouble</data_type>
+            </Element_Array>
+            <Axis_Array>
+                <axis_name>Line</axis_name>
+                <elements>20</elements>
+                <sequence_number>1</sequence_number>
+            </Axis_Array>
+            <Axis_Array>
+                <axis_name>Sample</axis_name>
+                <elements>512</elements>
+                <sequence_number>2</sequence_number>
+            </Axis_Array>
+        </Array_2D>
+        <Header>
+            <offset unit="byte">472320</offset>
+            <object_length unit="byte">2880</object_length>
+            <parsing_standard_id>FITS 3.0</parsing_standard_id>
+        </Header>
+        <Array_2D>
+            <local_identifier>Uncertainty</local_identifier>
+            <offset unit="byte">475200</offset>
+            <axes>2</axes>
+            <axis_index_order>Last Index Fastest</axis_index_order>
+            <description>Uncertainty values for the calibrated cube</description>
+            <Element_Array>
+                <data_type>IEEE754MSBDouble</data_type>
+            </Element_Array>
+            <Axis_Array>
+                <axis_name>Line</axis_name>
+                <elements>20</elements>
+                <sequence_number>1</sequence_number>
+            </Axis_Array>
+            <Axis_Array>
+                <axis_name>Sample</axis_name>
+                <elements>512</elements>
+                <sequence_number>2</sequence_number>
+            </Axis_Array>
+        </Array_2D>
+    </File_Area_Observational>
+</Product_Observational>

@@ -1,0 +1,49 @@
+{
+  "status": "publication-constrained proxy reproduction; not archived flight-data fitting",
+  "shape": "internal Bennu spinning-top proxy (not SPC v13)",
+  "facet_count": 224,
+  "paper_targets": {
+    "thermal_inertia": [
+      350.0,
+      20.0
+    ],
+    "rms_slope_deg": [
+      43.0,
+      1.0
+    ],
+    "crater_fraction": [
+      0.77,
+      0.04
+    ]
+  },
+  "recovered": {
+    "thermal_inertia": 350.0,
+    "bootstrap_sigma_thermal_inertia": 22.156468376279893,
+    "crater_fraction": 0.77,
+    "bootstrap_sigma_crater_fraction": 0.045695964943539724,
+    "rms_slope_deg": 43.0,
+    "bootstrap_sigma_rms_slope_deg": 1.2931421469909619
+  },
+  "physics_checks": {
+    "nominal_skin_depth_cm": 1.2278620661390902,
+    "largest_boundary_residual_W_m2": 0.3982486208076766
+  },
+  "model": {
+    "conduction": "periodic semi-infinite 1-D Fourier solution",
+    "boundary": "absorbed sunlight = epsilon*sigma*T^4 + downward conduction",
+    "roughness": "fractional energy-conserving hemispherical-crater microfacets",
+    "omissions": [
+      "global shadow ray tracing",
+      "iterated self-heating",
+      "multiple scattering",
+      "instrument response"
+    ]
+  },
+  "grid": {
+    "gamma_min": 0.0,
+    "gamma_max": 600.0,
+    "gamma_step": 10.0,
+    "fraction_step": 0.01,
+    "bootstrap_trials": 100
+  }
+}
