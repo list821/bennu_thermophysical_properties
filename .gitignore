@@ -1,0 +1,37 @@
+# Python/runtime caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Editors and operating system
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Large, reproducible mission data. Download with the project scripts.
+data/ovirs/full/
+data/spice/kernels/
+data/spice/ck/
+data/spice/spk/
+data/otes/
+*.part
+
+# Generated ray-tracing caches and alternate shape copies
+data/shape/*.npz
+data/shape/bennu_v21_12p6m.obj
+
+# Temporary extraction/rendering files
+tmp/
+
+# Generated outputs: keep only the compact, audited Supplementary Fig. 2b products.
+output/*
+!output/supplementary_fig2b/
+output/supplementary_fig2b/*
+!output/supplementary_fig2b/summary.json
+!output/supplementary_fig2b/ovirs_gamma_phase_chi2.csv
+!output/supplementary_fig2b/ovirs_thermal_1deg.csv
+!output/supplementary_fig2b/supplementary_figure_2b_reproduction.svg
+

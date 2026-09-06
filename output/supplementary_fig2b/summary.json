@@ -1,0 +1,71 @@
+{
+  "status": "public PDS L2 reconstructed to paper-like OVIRS thermal series",
+  "strict_paper_reproduction": false,
+  "input_fits": 34254,
+  "accepted_frames": 34254,
+  "binning": "1 degree rotational phase; disk-equivalent radiance = L2 detector radiance / PDS FILL_FAC",
+  "reflection_removal": "PDS OSIRIS-REx project solar spectrum scaled over 2.05-2.15 um; flat reflectance; Figure 2b samples averaged over 3.98-4.02 um",
+  "radiance_products": {
+    "detector": "public L2 radiance after reflected-sunlight subtraction",
+    "disk_equivalent": "detector thermal radiance divided by PDS FILL_FAC",
+    "underfilled_fov_warning": "public calibration documentation reports possible artifacts; no author L3a empirical correction array is public"
+  },
+  "roughness": {
+    "crater_fraction": 0.77,
+    "rms_slope_deg": 43.0
+  },
+  "roughness_physics": {
+    "crater_aperture_ray_visibility": true,
+    "view_factor_thermal_self_heating": true,
+    "multiple_scattered_sunlight": true,
+    "directional_thermal_beaming": true,
+    "crater_wall_elements": 128,
+    "self_heating_iterations": 4,
+    "global_shape_shadowing": true,
+    "global_shape_mutual_heating": true
+  },
+  "spice_geometry": {
+    "enabled": true,
+    "evaluated_frames": 34254,
+    "body_fixed_frame": "IAU_BENNU",
+    "aberration_correction": "LT+S",
+    "kernel_set": "SPCv14-compatible: bennu_v14 PCK + reconstructed 2018 ORX SPK/CK + OVIRS v00 IK",
+    "free_rotation_phase_shift": false
+  },
+  "shape": "D:\\ChatGPT\\热物理反演\\data\\shape\\g_12560mm_spc_obj_0000n00000_v014.obj (PDS km coordinates converted to m)",
+  "shape_facets": 12288,
+  "fit_grid_facets": 96,
+  "fit_facet_stride": 128,
+  "best_fit": {
+    "thermal_inertia": 248.0,
+    "phase_shift": 0.0,
+    "chi2": 110746.50254119323,
+    "degrees_of_freedom": 718,
+    "reduced_chi2": 154.2430397509655,
+    "delta_chi2_1_interval": [
+      248.0,
+      248.0
+    ],
+    "model_discrepancy_scaled_interval": [
+      248.0,
+      248.0
+    ]
+  },
+  "paper_reference": {
+    "thermal_inertia": 350.0,
+    "sigma": 20.0,
+    "figure_curves": [
+      330.0,
+      350.0,
+      370.0
+    ]
+  },
+  "limitations": [
+    "public archive contains L2 v2, not authors' processed L3a array",
+    "PDS FILL_FAC removes geometric dilution but cannot reproduce unpublished author-specific underfilled-FOV artifact corrections",
+    "Gamma scan uniformly subsamples shape plates for runtime; plotted curves can use all plates",
+    "per-frame SPICE geometry is binned/interpolated to the thermal solver phase grid",
+    "reduced chi-square above unity means the formal Delta-chi-square interval is not a reliable physical uncertainty"
+  ],
+  "phase_epoch_utc": "2018-11-02T04:12:36.859000+00:00"
+}
