@@ -1,4 +1,4 @@
-"""Concurrent, resumable downloader for the OVIRS science FITS used in the paper."""
+"""并发且可断点续传地下载论文两天所用 OVIRS 科学 FITS。"""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ USER_AGENT = "Bennu-OVIRS-reproduction/1.0"
 
 
 def list_products() -> list[str]:
+    """从 PDS 目录页筛选 2018-11-02/03 的 L2 v2 FITS 并核对总数。"""
     request = urllib.request.Request(BASE, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=120) as response:
         html = response.read().decode("utf-8", errors="replace")
@@ -33,6 +34,7 @@ def list_products() -> list[str]:
 
 
 def valid_fits(path: Path) -> bool:
+    """以固定文件大小和 FITS SIMPLE 签名快速验证本地产品。"""
     if not path.exists() or path.stat().st_size != EXPECTED_SIZE:
         return False
     with path.open("rb") as stream:
@@ -40,6 +42,7 @@ def valid_fits(path: Path) -> bool:
 
 
 def download_one(name: str, destination_dir: Path) -> tuple[str, int, str]:
+    """下载或续传一个 FITS，完成后验证并以原子重命名替换临时文件。"""
     destination = destination_dir / name
     if valid_fits(destination):
         return name, destination.stat().st_size, "existing"
@@ -74,6 +77,7 @@ def download_one(name: str, destination_dir: Path) -> tuple[str, int, str]:
 
 
 def main() -> None:
+    """并发下载全部产品，周期报告进度并保存可恢复状态。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("data/ovirs/full"))
     parser.add_argument("--workers", type=int, default=12)

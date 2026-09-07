@@ -1,7 +1,8 @@
-"""Per-frame OSIRIS-REx geometry from official NAIF SPICE kernels.
+"""使用 NAIF 官方 SPICE 核计算逐帧 OSIRIS-REx 观测几何。
 
-Vectors point from Bennu to the Sun and from Bennu to the spacecraft and are
-expressed in Bennu's IAU body-fixed frame, matching the SPC shape axes.
+方向向量分别从 Bennu 指向太阳和航天器，并表达在与 SPC 形状轴一致的
+``IAU_BENNU`` 天体固定坐标系中。SPK 给位置，PCK/框架核给 Bennu 姿态，
+CK 给航天器姿态，IK 给 OVIRS 实际视轴和圆形视场边缘。
 """
 from __future__ import annotations
 
@@ -21,6 +22,7 @@ KERNEL_SET_ID = ("SPCv14-compatible: bennu_v14 PCK + reconstructed 2018 ORX SPK/
 
 
 def load_kernel_set(kernel_root: str | Path):
+    """检查并装载本项目固定的 SPICE 核集合，返回 spiceypy 接口。"""
     try:
         import spiceypy as spice
     except ImportError as exc:
@@ -31,8 +33,8 @@ def load_kernel_set(kernel_root: str | Path):
         raise FileNotFoundError("Missing SPICE kernels; run download_spice_kernels.py:\n" +
                                 "\n".join(missing))
     spice.kclear()
-    # Do not Path.resolve(): on Windows it expands an ASCII junction back to
-    # the Unicode project path, which CSPICE N0067 cannot open reliably.
+    # 不调用 Path.resolve()：Windows 会把 ASCII 联接还原成含中文的项目路径，
+    # 而 CSPICE N0067 对该路径的打开并不可靠。
     for relative in KERNELS:
         spice.furnsh(str(root.absolute() / relative))
     return spice
@@ -40,19 +42,20 @@ def load_kernel_set(kernel_root: str | Path):
 
 def frame_geometry(utc_values: Iterable[str], kernel_root: str | Path,
                    frame: str = "IAU_BENNU") -> dict[str, np.ndarray]:
-    """Evaluate Sun/observer geometry at every supplied UTC timestamp."""
+    """在每个输入 UTC 时刻求太阳、观测者、OVIRS 视轴和视场半角。"""
     spice = load_kernel_set(kernel_root)
     utc = list(utc_values)
-    # FITS timestamps are cached as ISO-8601 with a ``+00:00`` suffix; CSPICE
-    # accepts the equivalent UTC form with no offset (or a trailing Z).
+    # FITS 时间缓存为带 +00:00 的 ISO-8601；CSPICE 接收等价的无偏移或 Z 结尾 UTC。
     normalized_utc = [value[:-6] if value.endswith("+00:00") else value for value in utc]
     et = np.asarray([spice.str2et(value) for value in normalized_utc])
     try:
+        # LT+S 同时修正单程光行时和恒星像差，与论文逐帧观测几何含义一致。
         sun_km, _ = spice.spkpos(SUN_ID, et, frame, "LT+S", BENNU_ID)
         observer_km, _ = spice.spkpos(ORX_ID, et, frame, "LT+S", BENNU_ID)
         shape, fov_frame, instrument_boresight, boundary_count, bounds = spice.getfov(-64321, 4)
         if shape != "CIRCLE" or boundary_count != 1:
             raise RuntimeError(f"Unexpected OVIRS IK FOV: {shape}, {boundary_count}")
+        # 由 CK/框架链把 IK 中的仪器视轴逐帧旋转到 IAU_BENNU。
         transforms = np.asarray([spice.pxform(fov_frame, frame, value) for value in et])
         boresight = np.einsum("tij,j->ti", transforms, instrument_boresight)
         fov_half_angle = float(np.arccos(np.clip(

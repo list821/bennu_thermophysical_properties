@@ -1,9 +1,8 @@
-"""Fit the public calibrated OSIRIS-REx thermal observations with the Python model.
+"""用 Python 模型拟合公开标定的 OSIRIS-REx 热观测（旧版归一化流程）。
 
-This is a real-data inversion, but not yet a strict reproduction of the 2019
-paper: the public v21 DSK is not read without SPICE/DSK support, so the built-in
-proxy shape is used unless --shape supplies an OBJ.  Each observing day's
-rotation zero point is fitted as a nuisance parameter.
+这是真实数据反演但不是 2019 论文严格复现：未传入 OBJ 时使用代理形状，并把每个
+观测日的自转零点作为干扰参数拟合。当前 OVIRS 绝对辐亮度主流程请使用
+``reproduce_supplementary_fig2b.py``。
 """
 
 from __future__ import annotations
@@ -23,6 +22,7 @@ from pds_observations import (BinnedLightcurve, load_otes_lightcurves,
 
 
 def shifted_chi2(prediction: np.ndarray, observation: BinnedLightcurve) -> tuple[float, int]:
+    """循环平移模型，返回该光变的最小 χ² 与最佳相位箱平移。"""
     valid = np.isfinite(observation.value) & np.isfinite(observation.sigma) & (observation.sigma > 0)
     if np.count_nonzero(valid) < 4:
         return np.inf, 0
@@ -38,6 +38,7 @@ def shifted_chi2(prediction: np.ndarray, observation: BinnedLightcurve) -> tuple
 
 def fit_grid(grids: dict[str, dict[float, object]], observations: list[BinnedLightcurve],
              gammas: np.ndarray, fractions: np.ndarray) -> tuple[np.ndarray, float, float]:
+    """在 Γ–坑覆盖率网格上联合拟合所有归一化 OTES/OVIRS 光变。"""
     chi2 = np.zeros((len(gammas), len(fractions)), float)
     for i, gamma in enumerate(gammas):
         for j, fraction in enumerate(fractions):
@@ -56,6 +57,7 @@ def fit_grid(grids: dict[str, dict[float, object]], observations: list[BinnedLig
 
 
 def best_details(grids, observations, gamma, fraction):
+    """重算最佳网格点的逐曲线 χ²、相移和模型。"""
     output = []
     for observation in observations:
         model = grids[observation.instrument][gamma]
@@ -77,6 +79,7 @@ def best_details(grids, observations, gamma, fraction):
 
 
 def write_curve_csv(path: Path, observations, details):
+    """写出每条归一化观测光变及最佳模型。"""
     with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(["instrument", "source", "phase", "observed_relative_radiance",
@@ -88,6 +91,7 @@ def write_curve_csv(path: Path, observations, details):
 
 
 def write_svg(path: Path, observations, details):
+    """生成多面板归一化光变拟合 SVG。"""
     width, panel_h, margin = 980, 235, 65
     height = 55 + len(observations) * (panel_h + 50)
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
@@ -121,6 +125,7 @@ def write_svg(path: Path, observations, details):
 
 
 def main():
+    """读取公开热数据、建立模型网格并输出旧版联合拟合结果。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data", type=Path, default=Path("data"))
     parser.add_argument("--shape", type=Path, help="optional Bennu OBJ; otherwise proxy shape")

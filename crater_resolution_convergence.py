@@ -1,4 +1,4 @@
-"""Check hemispherical-crater radiance convergence on SPCv14 + SPICE geometry."""
+"""在 SPCv14 与 SPICE 几何下检查半球坑辐亮度的网格收敛性。"""
 from __future__ import annotations
 
 import argparse
@@ -15,6 +15,7 @@ from reproduce_supplementary_fig2b import (bin_one_degree, geometry_on_model_gri
 
 
 def main():
+    """依次运行 8–200 个坑壁单元，以 200 单元曲线为参考输出差异。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path,
                         default=Path("output/crater_resolution_convergence.csv"))
@@ -42,6 +43,7 @@ def main():
                         "wall_elements": theta_bins*azimuth_bins,
                         "elapsed_s": elapsed, "curve": curve})
         print(f"{theta_bins}x{azimuth_bins}: {elapsed:.2f} s", flush=True)
+    # 最高分辨率只作为本组测试的数值参考，并不等于解析真值。
     reference = results[-1]["curve"]
     scale = float(np.mean(reference))
     args.output.parent.mkdir(parents=True, exist_ok=True)

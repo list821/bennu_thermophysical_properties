@@ -1,8 +1,7 @@
-"""Run a Bennu ATPM-like forward grid, inversion and 100-trial bootstrap.
+"""运行 Bennu ATPM 代理正演网格、反演和 100 次 bootstrap。
 
-The proxy observations are deliberately labelled as such: the 2019 paper did
-not publish its individual OVIRS/OTES samples, errors, SPICE geometry or v13
-mesh.  Supplying ``--shape model.obj`` replaces the built-in proxy mesh.
+这里的观测明确是代理数据，并非飞行数据。传入 ``--shape model.obj`` 可替换
+内置代理形状；真实 OVIRS 补充图 2b 流程应运行 ``reproduce_supplementary_fig2b.py``。
 """
 from __future__ import annotations
 
@@ -18,6 +17,7 @@ from bennu_atpm import (ThermoConfig, crater_fraction_to_rms_deg, generate_grid,
 
 
 def fit_grid(grid, gammas, fractions, obs4, sigma4, obs14, sigma14):
+    """在 Γ–坑覆盖率二维网格上联合计算 4/14 µm χ²。"""
     chi2 = np.empty((len(gammas), len(fractions)))
     for i, gamma in enumerate(gammas):
         model = grid[float(gamma)]
@@ -31,6 +31,7 @@ def fit_grid(grid, gammas, fractions, obs4, sigma4, obs14, sigma14):
 
 
 def write_svg(path, phase, obs4, fit4, obs14, fit14):
+    """把代理观测和最佳拟合写成双面板 SVG。"""
     width, height, margin = 900, 620, 70
     panels = [(obs4, fit4, "OVIRS 4 um disk radiance proxy"),
               (obs14, fit14, "OTES 14 um relative light curve")]
@@ -62,6 +63,7 @@ def write_svg(path, phase, obs4, fit4, obs14, fit14):
 
 
 def main():
+    """生成代理观测、执行网格反演和 bootstrap，并写出全部结果。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--shape", type=Path, help="optional triangular/polygonal Bennu OBJ")
     parser.add_argument("--output", type=Path, default=Path("output/python_bennu"))
@@ -72,7 +74,7 @@ def main():
     config = ThermoConfig(n_phase=64 if args.quick else 96)
     mesh = load_obj(args.shape) if args.shape else make_bennu_proxy_mesh()
     gammas = np.arange(0., 601., 50. if args.quick else 10.)
-    # A 0.01 grid includes the published best value 0.77 exactly.
+    # 0.01 网格精确包含论文报告的坑覆盖率 0.77。
     fractions = np.round(np.arange(0., 1.0001, .01), 2)
     print(f"Mesh: {mesh.source}; {len(mesh.faces)} facets")
     print(f"Calculating {len(gammas)} thermal-inertia models ...")
@@ -82,9 +84,8 @@ def main():
     truth = grid[truth_gamma]
     obs4, obs14 = truth.mixed(truth_fraction)
     obs14 /= obs14.mean()
-    # Explicit proxy errors, not flight-data uncertainties.
-    # Chosen proxy noise levels reproduce the *scale* of the paper's reported
-    # bootstrap widths (about 20 in Gamma and 0.04 in crater fraction).
+    # 这是人为代理误差，不是飞行数据不确定度；噪声大小只用于复现论文 bootstrap
+    # 宽度的量级（Γ 约 20、坑覆盖率约 0.04）。
     sigma4 = np.full_like(obs4, .010*obs4.mean())
     sigma14 = np.full_like(obs14, .0035)
     chi2, best_gamma, best_fraction = fit_grid(grid, gammas, fractions, obs4, sigma4, obs14, sigma14)
@@ -135,8 +136,10 @@ def main():
         "model": {"conduction": "periodic semi-infinite 1-D Fourier solution",
                   "boundary": "absorbed sunlight = epsilon*sigma*T^4 + downward conduction",
                   "roughness": "fractional energy-conserving hemispherical-crater microfacets",
-                  "omissions": ["global shadow ray tracing", "iterated self-heating",
-                                "multiple scattering", "instrument response"]},
+                  "included": ["crater aperture visibility", "crater self-heating",
+                               "multiple-scattered sunlight", "Gaussian OVIRS sample response"],
+                  "omissions": ["global shape shadow ray tracing", "global shape mutual heating",
+                                "SPICE geometry", "full measured instrument response"]},
         "grid": {"gamma_min": float(gammas.min()), "gamma_max": float(gammas.max()),
                  "gamma_step": float(gammas[1]-gammas[0]), "fraction_step": .01,
                  "bootstrap_trials": args.bootstrap}}

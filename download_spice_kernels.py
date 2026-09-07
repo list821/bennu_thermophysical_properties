@@ -1,4 +1,4 @@
-"""Download the minimal official OSIRIS-REx SPICE set for Nov. 2018 geometry."""
+"""下载计算 2018 年 11 月观测几何所需的最小官方 SPICE 核集合。"""
 from __future__ import annotations
 
 import argparse
@@ -10,8 +10,7 @@ BASE = "https://naif.jpl.nasa.gov/pub/naif/pds/pds4/orex/orex_spice/spice_kernel
 KERNELS = (
     "lsk/naif0012.tls",
     "pck/pck00010.tpc",
-    # Match the SPCv14 OBJ longitude convention.  Loading bennu_v17 here
-    # would rotate a v14 surface model about its spin axis.
+    # 必须匹配 SPCv14 OBJ 的经度约定；加载 bennu_v17 会让 v14 表面绕自转轴偏转。
     "pck/bennu_v14.tpc",
     "fk/orx_v14.tf",
     "fk/orx_shape_v03.tf",
@@ -21,12 +20,13 @@ KERNELS = (
     "spk/bennu_refdrmc_v1.bsp",
     "spk/orx_struct_v04.bsp",
     "spk/orx_180801_190302_181218_od077_v1.bsp",
-    # Reconstructed spacecraft attitude covering both observing sequences.
+    # 覆盖两段观测的重建航天器姿态 CK。
     "ck/orx_sc_rel_181029_181104_v02.bc",
 )
 
 
 def download(destination: Path) -> None:
+    """跳过已存在核文件，其余逐个下载到保持 NAIF 目录结构的目标位置。"""
     for relative in KERNELS:
         target = destination / relative
         target.parent.mkdir(parents=True, exist_ok=True)

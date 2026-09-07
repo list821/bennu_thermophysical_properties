@@ -1,10 +1,8 @@
-"""Rebuild the OVIRS 4 um light curve and Supplementary Figure 2b.
+"""用公开 OVIRS 数据重建 4 µm 光变和论文补充图 2b。
 
-The input is the public PDS L2 v2 calibrated FITS collection.  The paper's L3a
-series is reconstructed by scaling a solar spectral shape near 2.1 um,
-subtracting it at the 4-um samples, and binning the calibrated radiance to one
-degree of Bennu rotation.  The thermophysical fit fixes RMS roughness to 43 deg
-(hemispherical-crater fraction 0.77) and scans thermal inertia.
+输入为 PDS 公开的 L2 v2 标定 FITS。程序在约 2.1 µm 处缩放太阳光谱形状，
+从 4 µm 测量中减去反射分量，再按 Bennu 自转相位每 1° 分箱，以近似作者未
+公开的 L3a 序列。反演固定 RMS 粗糙度 43°（半球坑覆盖率 0.77），扫描热惯量。
 """
 
 from __future__ import annotations
@@ -31,15 +29,15 @@ DATE_CONFIG = {
 
 
 def process_frames(input_dir: Path, cache: Path) -> list[dict[str, object]]:
+    """读取两天的 OVIRS FITS、扣除反射光并缓存逐帧热辐亮度。"""
     fits_files = sorted(input_dir.glob("2018110[23]T*_ovr_scil2_calv2.fits"))
     if not fits_files:
         raise FileNotFoundError(f"No OVIRS science FITS in {input_dir}")
     if cache.exists():
         with cache.open("r", newline="", encoding="utf-8") as stream:
             rows = list(csv.DictReader(stream))
-        # The paper starts from radiometrically corrected spectra and does not
-        # prescribe division by FILL_FAC.  FILL_FAC is retained as a diagnostic
-        # only; the detector radiance is fitted to an aperture-integrated model.
+        # 论文从辐射定标光谱开始，并未要求再除以 FILL_FAC。这里只把 FILL_FAC
+        # 留作诊断；反演使用检测器口径辐亮度与孔径积分模型直接比较。
         cache_is_current = (bool(rows) and
                             rows[0].get("band_definition") == "3.98-4.02 um" and
                             rows[0].get("solar_spectrum") == "PDS orexsolarflux.csv")
@@ -57,8 +55,7 @@ def process_frames(input_dir: Path, cache: Path) -> list[dict[str, object]]:
                 row["sigma"] = raw_sigma
                 row["disk_equivalent_radiance_diagnostic"] = raw/fill
                 row["radiance_correction"] = "none_PDS_FILL_FAC_is_diagnostic_only"
-            # Persist the corrected semantics so the cache itself is not
-            # misleading when inspected outside this Python process.
+            # 把正确的数据口径写回缓存，避免脱离本程序查看 CSV 时产生误解。
             with cache.open("w", newline="", encoding="utf-8") as stream:
                 writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
                 writer.writeheader()
@@ -108,7 +105,7 @@ SPICE_FLOAT_FIELDS = (
 
 def attach_spice_geometry(rows: list[dict[str, object]], kernel_root: Path,
                           cache: Path) -> list[dict[str, object]]:
-    """Attach exact UTC-evaluated geometry to every accepted OVIRS frame."""
+    """按每帧 UTC 计算并附加太阳、航天器、视轴与 FOV 的 SPICE 几何。"""
     if rows and all(row.get("spice_kernel_set") == KERNEL_SET_ID for row in rows):
         for row in rows:
             for key in SPICE_FLOAT_FIELDS:
@@ -146,6 +143,7 @@ def attach_spice_geometry(rows: list[dict[str, object]], kernel_root: Path,
 
 
 def bin_one_degree(rows: list[dict[str, object]], period_hours: float = 4.296061):
+    """按 4.296061 h 自转周期将逐帧量合并到 360 个一度相位箱。"""
     epoch = min(float(row["unix_s"]) for row in rows)
     period_s = period_hours * 3600.0
     datasets = {}
@@ -190,8 +188,7 @@ def bin_one_degree(rows: list[dict[str, object]], period_hours: float = 4.296061
             scatter_sem = (float(np.std(samples, ddof=1) / np.sqrt(len(samples)))
                            if len(samples) > 1 else 0.0)
             spectral_sem = float(np.sqrt(np.sum(sample_errors**2)) / max(len(sample_errors), 1))
-            # A 0.5% floor prevents thousands of spectra from turning unmodelled
-            # shape details into unrealistically tiny formal errors.
+            # 0.5% 误差下限防止大量光谱把尚未建模的形状细节变成不现实的小误差。
             errors[index] = max(scatter_sem, spectral_sem, means[index] * 0.005)
             kept_indices = np.flatnonzero(mask)[keep]
             detector_means[index] = np.mean(detector_value[kept_indices])
@@ -231,11 +228,13 @@ def bin_one_degree(rows: list[dict[str, object]], period_hours: float = 4.296061
 
 
 def cyclic_interpolate(curve: np.ndarray, phase: np.ndarray) -> np.ndarray:
+    """在周期边界连续地把模型曲线插值到观测相位。"""
     model_phase = np.arange(len(curve)) / len(curve)
     return np.interp(np.mod(phase, 1.0), np.r_[model_phase, 1.0], np.r_[curve, curve[0]])
 
 
 def geometry_on_model_grid(data, n_phase: int):
+    """把一度分箱后的逐帧 SPICE 几何周期插值到热模型相位网格。"""
     target = np.arange(n_phase)/n_phase
     valid = np.isfinite(data["heliocentric_distance_au"])
     source_phase = data["phase"][valid]
@@ -262,11 +261,11 @@ def geometry_on_model_grid(data, n_phase: int):
 
 
 def sampled_mesh(mesh: Mesh, stride: int) -> Mesh:
+    """为热惯量扫描均匀抽取形状面元，并按步长补偿代表面积。"""
     stride = max(1, int(stride))
     index = np.arange(0, len(mesh.faces), stride)
-    # Each retained plate represents its omitted neighbours.  Area scaling
-    # cancels in disk-average radiance but is essential for FOV solid angle
-    # and approximate global radiative exchange on the scan mesh.
+    # 每个保留面元代表邻近被跳过的面元。面积比例在盘平均辐亮度中会约去，
+    # 但对 FOV 立体角和扫描网格上的近似全局辐射交换不可缺少。
     return Mesh(mesh.vertices, mesh.faces[index], mesh.centers[index], mesh.normals[index],
                 mesh.areas[index]*stride, f"{mesh.source}; uniform plate stride {stride}")
 
@@ -276,6 +275,7 @@ def fit_gamma(mesh, datasets, gammas, roughness_fraction, model_phases,
               facet_chunk_size=64, self_heating_iterations=4,
               global_shadowing=True, global_self_heating=True,
               view_factor_cache: Path | None = None):
+    """逐个 Γ 正演并以两个观测日的加权残差联合搜索最小 χ²。"""
     fit_cache = None
     if view_factor_cache is not None:
         fit_cache = str(view_factor_cache.with_name(
@@ -298,11 +298,11 @@ def fit_gamma(mesh, datasets, gammas, roughness_fraction, model_phases,
             else:
                 result = simulate(mesh, float(gamma), config, *geometry)
             curve4 = result.mixed_detector(roughness_fraction)
-            model[day][float(gamma)] = curve4 / 1.0e4  # W m-2 -> W cm-2
+            # 模型核心输出 W m⁻²；论文图纵轴使用 W cm⁻²，故除以 10⁴。
+            model[day][float(gamma)] = curve4 / 1.0e4
             gc.collect()
-    # SPICE and the SPC model share a body-fixed longitude convention, so a
-    # free empirical rotational offset would discard information supplied by
-    # the kernels.  Retain the legacy scan only for non-SPICE inputs.
+    # SPICE 与 SPC 形状共享天体固定经度约定。使用 SPICE 时再拟合任意相位平移
+    # 会丢弃核文件提供的信息；只有缺少 SPICE 几何时才保留旧的相位扫描。
     using_spice = all(np.any(np.isfinite(data["heliocentric_distance_au"]))
                       for data in datasets.values())
     shifts = np.array([0.0]) if using_spice else np.arange(360)/360.0
@@ -325,6 +325,7 @@ def display_models(mesh, datasets, roughness_fraction, model_phases=64,
                    facet_chunk_size=64, self_heating_iterations=4,
                    global_shadowing=True, global_self_heating=True,
                    view_factor_cache: Path | None = None):
+    """独立计算论文图示的 Γ=330、350、370 三条展示曲线。"""
     output = {day: {} for day in datasets}
     base = ThermoConfig(n_phase=model_phases, crater_theta_bins=crater_theta_bins,
                         crater_azimuth_bins=crater_azimuth_bins,
@@ -347,6 +348,7 @@ def display_models(mesh, datasets, roughness_fraction, model_phases=64,
 
 
 def write_binned_csv(path, datasets):
+    """写出可审计的一度分箱观测、误差、填充率及几何表。"""
     with path.open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(["date", "rotation_phase",
@@ -368,6 +370,7 @@ def write_binned_csv(path, datasets):
 
 
 def write_figure(path, datasets, model, best_shift):
+    """不依赖绘图库，直接生成补充图 2b 风格的 SVG。"""
     width, height = 920, 640
     left, right, top, bottom = 115, 875, 65, 545
     plot_phase = np.linspace(0, 1, 721)
@@ -413,6 +416,7 @@ def write_figure(path, datasets, model, best_shift):
 
 
 def main():
+    """解析命令行、执行数据处理—正演网格—χ² 反演—结果输出全流程。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=Path("data/ovirs/full"))
     parser.add_argument("--shape", type=Path,
@@ -496,7 +500,10 @@ def main():
             "crater_wall_elements": int(args.crater_theta_bins * args.crater_azimuth_bins),
             "self_heating_iterations": int(args.self_heating_iterations),
             "global_shape_shadowing": not args.disable_global_shadowing,
-            "global_shape_mutual_heating": not args.disable_global_self_heating
+            "global_shape_mutual_heating_smooth_endpoint": not args.disable_global_self_heating,
+            "rough_global_coupling": (
+                "smooth-endpoint external field approximation"
+                if not args.disable_global_self_heating else "disabled")
         },
         "spice_geometry": {
             "enabled": True,
@@ -526,12 +533,12 @@ def main():
                         "public calibration documentation notes underfilled-FOV artifacts but no author-specific L3a correction array is public",
                         "Gamma scan uniformly subsamples shape plates for runtime; plotted curves can use all plates",
                         "per-frame SPICE geometry is binned/interpolated to the thermal solver phase grid",
+                        "global mutual heating is solved on the smooth macro-facet endpoint and reused as an external field for rough microfacets, not fully coupled",
                         "reduced chi-square above unity means the formal Delta-chi-square interval is not a reliable physical uncertainty"],
         "phase_epoch_utc": datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat(),
     }
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
-    # Always calculate the three curves shown in the paper independently of the
-    # fitted Gamma interval.  This also lets a narrow audit scan make a figure.
+    # 图中的三条论文参考曲线与本次 Γ 扫描范围分开计算，因此窄范围审计扫描也能绘图。
     if not args.skip_figure:
         figure_mesh = fit_mesh if args.skip_full_shape_figure else mesh
         figure_model = display_models(

@@ -1,12 +1,10 @@
-"""Download public inputs used by the Bennu 2019 Nature Astronomy paper.
+"""下载 Bennu 2019 年 Nature Astronomy 文章可公开取得的输入。
 
-Default mode downloads the manageable core set: paper and instrument documents,
-two OTES calibrated observations, their geometry, two representative OVIRS
-products, a public 12.6 m Bennu shape model, and date-relevant SPICE kernels.
+默认只下载规模可控的核心集合：论文与仪器文档、两段 OTES 标定观测及其几何、
+两个 OVIRS 格式样例、一个公开 12.6 m Bennu 形状和相关日期 SPICE 核。
 
-The complete OVIRS fit set contains 34,254 FITS products plus PDS labels and is
-roughly 19 GB.  It is downloaded only when both --full-ovirs and
---confirm-large-download are supplied.
+完整 OVIRS 集合含 34,254 个 FITS 及对应标签，约 19 GB；只有同时指定
+``--full-ovirs`` 与 ``--confirm-large-download`` 才会下载。
 """
 
 from __future__ import annotations
@@ -115,6 +113,7 @@ for family, names in SPICE_FILES.items():
 
 
 def directory_links(url: str) -> list[str]:
+    """读取公开目录页并返回解码后的链接目标。"""
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     with urllib.request.urlopen(request, timeout=60) as response:
         html = response.read().decode("utf-8", errors="replace")
@@ -122,6 +121,7 @@ def directory_links(url: str) -> list[str]:
 
 
 def sha256(path: Path) -> str:
+    """流式计算文件 SHA-256，避免大文件一次载入内存。"""
     digest = hashlib.sha256()
     with path.open("rb") as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
@@ -130,6 +130,7 @@ def sha256(path: Path) -> str:
 
 
 def download(url: str, relative: str, category: str) -> dict[str, object]:
+    """下载单个输入并返回来源、路径、大小和校验和清单记录。"""
     destination = DATA / relative
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists() and destination.stat().st_size:
@@ -151,7 +152,7 @@ def download(url: str, relative: str, category: str) -> dict[str, object]:
                 temporary.replace(destination)
                 last_error = None
                 break
-            except Exception as exc:  # report URL and retry transient failures
+            except Exception as exc:  # 报告 URL，并重试暂时性网络失败。
                 last_error = exc
                 print(f"WARN attempt {attempt}/3 failed: {exc}")
                 time.sleep(2 * attempt)
@@ -167,6 +168,7 @@ def download(url: str, relative: str, category: str) -> dict[str, object]:
 
 
 def geometry_files() -> list[tuple[str, str, str]]:
+    """列出 2018-11-08/09 的全部 OTES 几何 FITS/XML。"""
     base = f"{OTES}/geometry/approach/"
     names = directory_links(base)
     pattern = re.compile(r"^2018110[89]T\d{6}S\d{3}_ote_geo\.(?:fits|xml)$")
@@ -180,6 +182,7 @@ def geometry_files() -> list[tuple[str, str, str]]:
 
 
 def full_ovirs_files() -> list[tuple[str, str, str]]:
+    """列出 2018-11-02/03 的完整 OVIRS L2 v2 FITS/XML 并核对数量。"""
     base = f"{OVIRS}/data_calibrated/approach/"
     names = directory_links(base)
     pattern = re.compile(
@@ -199,6 +202,7 @@ def full_ovirs_files() -> list[tuple[str, str, str]]:
 
 
 def write_local_meta_kernel() -> None:
+    """写出只引用已下载本地核的 SPICE meta-kernel。"""
     path = DATA / "spice" / "orex_2018_nov_local.tm"
     kernels = []
     for family, names in SPICE_FILES.items():
@@ -217,6 +221,7 @@ def write_local_meta_kernel() -> None:
 
 
 def main() -> None:
+    """解析大小确认选项、下载输入并保存带校验和的 manifest。"""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--full-ovirs",
