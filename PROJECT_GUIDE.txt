@@ -49,6 +49,11 @@ download_ovirs_20181102_03.py
 download_spice_kernels.py
   下载当前流程所需的官方 NAIF kernels。
 
+download_paper_inputs.py
+  综合下载器：保留论文、仪器说明、OTES/OVIRS 样本、形状和 SPICE 的来源清单；
+  指定两个大数据确认参数后，也可以下载完整两天 OVIRS 数据。这个脚本用于重新
+  建立或核验全部公开数据来源，不参与热模型计算。
+
 inspect_inputs.py
   不修改数据，只显示一个 FITS 的数组形状、单位、4 um 提取值、太阳谱范围、
   OBJ 顶点/面元数、SPICE 文件完整性和逐帧缓存字段。
@@ -176,6 +181,15 @@ OVIRS 中心波长=4.00038 um；近似 FWHM=0.00641 um。
 下载 SPICE：
 
   .\.venv\Scripts\python.exe .\download_spice_kernels.py --output 'D:\ATPM\data\spice\kernels'
+
+如需重新建立包含论文、仪器文档、样本观测、形状和 SPICE 的完整数据清单，可运行：
+
+  .\.venv\Scripts\python.exe .\download_paper_inputs.py
+
+综合下载器默认只下载较小的核心集合。只有明确需要重新下载约 19 GB 的完整 OVIRS
+时才使用：
+
+  .\.venv\Scripts\python.exe .\download_paper_inputs.py --full-ovirs --confirm-large-download
 
 下载器会跳过已经验证的文件，所以可安全重跑。当前电脑上的完整数据已存在，无需
 重复下载。
