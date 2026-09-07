@@ -14,6 +14,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+import sys
 
 import numpy as np
 
@@ -417,6 +418,9 @@ def write_figure(path, datasets, model, best_shift):
 
 def main():
     """解析命令行、执行数据处理—正演网格—χ² 反演—结果输出全流程。"""
+    # 避免 Windows 默认 GBK 在帮助或进度信息中遇到 µ、χ² 时编码失败。
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=Path("data/ovirs/full"))
     parser.add_argument("--shape", type=Path,

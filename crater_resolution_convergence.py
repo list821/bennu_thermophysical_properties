@@ -10,8 +10,9 @@ from time import perf_counter
 import numpy as np
 
 from bennu_atpm import ThermoConfig, load_obj, simulate
-from reproduce_supplementary_fig2b import (bin_one_degree, geometry_on_model_grid,
-                                           process_frames, sampled_mesh)
+from reproduce_supplementary_fig2b import (attach_spice_geometry, bin_one_degree,
+                                           geometry_on_model_grid, process_frames,
+                                           sampled_mesh)
 
 
 def main():
@@ -21,9 +22,12 @@ def main():
                         default=Path("output/crater_resolution_convergence.csv"))
     parser.add_argument("--facet-stride", type=int, default=128)
     parser.add_argument("--model-phases", type=int, default=48)
+    parser.add_argument("--spice-kernels", type=Path,
+                        default=Path(r"D:\ATPM\data\spice\kernels"))
     args = parser.parse_args()
     frame_cache = Path("output/supplementary_fig2b/processed_ovirs_frames.csv")
     rows = process_frames(Path("data/ovirs/full"), frame_cache)
+    rows = attach_spice_geometry(rows, args.spice_kernels, frame_cache)
     datasets, _ = bin_one_degree(rows)
     geometry = geometry_on_model_grid(datasets["2018-11-02"], args.model_phases)
     mesh = sampled_mesh(load_obj("data/shape/g_12560mm_spc_obj_0000n00000_v014.obj"),
