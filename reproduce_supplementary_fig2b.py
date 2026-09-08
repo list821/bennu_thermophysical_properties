@@ -321,12 +321,13 @@ def fit_gamma(mesh, datasets, gammas, roughness_fraction, model_phases,
     return model, shifts, chi2, float(gammas[best_index[0]]), float(shifts[best_index[1]])
 
 
-def display_models(mesh, datasets, roughness_fraction, model_phases=64,
+def display_models(mesh, datasets, roughness_fraction,
+                   gammas=(330.0, 350.0, 370.0), model_phases=64,
                    crater_theta_bins=8, crater_azimuth_bins=16,
                    facet_chunk_size=64, self_heating_iterations=4,
                    global_shadowing=True, global_self_heating=True,
                    view_factor_cache: Path | None = None):
-    """独立计算论文图示的 Γ=330、350、370 三条展示曲线。"""
+    """独立计算指定热惯量的展示曲线，包括当前最佳值和论文参考值。"""
     output = {day: {} for day in datasets}
     base = ThermoConfig(n_phase=model_phases, crater_theta_bins=crater_theta_bins,
                         crater_azimuth_bins=crater_azimuth_bins,
@@ -339,7 +340,7 @@ def display_models(mesh, datasets, roughness_fraction, model_phases=64,
     for day in datasets:
         config = replace(base, **DATE_CONFIG[day])
         geometry = geometry_on_model_grid(datasets[day], model_phases)
-        for gamma in (330.0, 350.0, 370.0):
+        for gamma in dict.fromkeys(float(value) for value in gammas):
             print(f"Figure model: {day}, Gamma={gamma:g}", flush=True)
             result = (simulate(mesh, gamma, config) if geometry is None else
                       simulate(mesh, gamma, config, *geometry))
@@ -370,49 +371,96 @@ def write_binned_csv(path, datasets):
                 writer.writerow([day, *row])
 
 
-def write_figure(path, datasets, model, best_shift):
-    """不依赖绘图库，直接生成补充图 2b 风格的 SVG。"""
-    width, height = 920, 640
-    left, right, top, bottom = 115, 875, 65, 545
+def write_figure(path, datasets, model, best_shift, best_gamma, facet_count):
+    """把两天观测和所有 ATPM 模型画在同一张、同一纵轴范围的双面板 SVG。"""
+    width, height = 1120, 900
+    left, right = 125, 1080
+    panel_top, panel_height, panel_gap = 180, 250, 82
     plot_phase = np.linspace(0, 1, 721)
-    observed_values = np.concatenate([x["value"][np.isfinite(x["value"])] for x in datasets.values()])
-    ymin = min(1.0e-4, float(np.min(observed_values)) * 0.97)
-    ymax = max(1.3e-4, float(np.max(observed_values)) * 1.03)
-    sx = lambda x: left + x * (right - left)
-    sy = lambda y: bottom - (y - ymin) / (ymax - ymin) * (bottom - top)
+    reference_gammas = (330.0, 350.0, 370.0)
+    plotted_gammas = tuple(dict.fromkeys((float(best_gamma), *reference_gammas)))
+
+    # 先同时统计观测与模型的范围，保证任何曲线都不会落到坐标框外。
+    all_values = []
+    curves = {}
+    for day, data in datasets.items():
+        valid = np.isfinite(data["value"])
+        all_values.extend(data["value"][valid])
+        curves[day] = {}
+        for gamma in plotted_gammas:
+            curve = cyclic_interpolate(model[day][gamma], plot_phase-best_shift)
+            curves[day][gamma] = curve
+            all_values.extend(curve[np.isfinite(curve)])
+    ymin, ymax = float(np.min(all_values)), float(np.max(all_values))
+    padding = max(.06*(ymax-ymin), 1e-7)
+    ymin, ymax = max(0.0, ymin-padding), ymax+padding
+
+    def sx(value):
+        return left+value*(right-left)
+
+    def sy(value, top):
+        bottom = top+panel_height
+        return bottom-(value-ymin)/(ymax-ymin)*panel_height
+
+    styles = {
+        float(best_gamma): ("#d62728", "", 3.4,
+                            f"Best fit: Gamma={best_gamma:g} (red solid)"),
+        330.0: ("#2ca02c", "10 6", 2.4, "Paper reference: Gamma=330 (green dashed)"),
+        350.0: ("#ff7f0e", "12 5 2 5", 2.4,
+                "Paper reference: Gamma=350 (orange dash-dot)"),
+        370.0: ("#222222", "2 5", 2.4, "Paper reference: Gamma=370 (black dotted)"),
+    }
     parts = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}">',
              '<rect width="100%" height="100%" fill="white"/>',
-             '<style>text{font-family:Arial,sans-serif;fill:#111}.axis{stroke:#111;stroke-width:1.5}.grid{stroke:#ddd}</style>']
-    for tick in np.linspace(0, 1, 6):
-        x = sx(tick)
-        parts += [f'<line class="grid" x1="{x}" y1="{top}" x2="{x}" y2="{bottom}"/>',
-                  f'<text x="{x}" y="{bottom+28}" text-anchor="middle" font-size="17">{tick:.1f}</text>']
-    for tick in np.arange(np.floor(ymin/0.05e-4)*0.05e-4, ymax+0.01e-4, 0.05e-4):
-        y = sy(tick)
-        parts += [f'<line class="grid" x1="{left}" y1="{y}" x2="{right}" y2="{y}"/>',
-                  f'<text x="{left-12}" y="{y+6}" text-anchor="end" font-size="17">{tick/1e-4:.2f}</text>']
-    parts += [f'<line class="axis" x1="{left}" y1="{top}" x2="{left}" y2="{bottom}"/>',
-              f'<line class="axis" x1="{left}" y1="{bottom}" x2="{right}" y2="{bottom}"/>',
-              f'<text x="{(left+right)/2}" y="{height-35}" text-anchor="middle" font-size="20">Rotation phase</text>',
-              f'<text x="28" y="{(top+bottom)/2}" transform="rotate(-90 28 {(top+bottom)/2})" text-anchor="middle" font-size="19">Radiance (10^-4 W cm^-2 um^-1 sr^-1)</text>',
-              f'<text x="{right-10}" y="{top+32}" text-anchor="end" font-size="28">(b)</text>']
-    colors = {330.0: ("#22cc33", "8 7"), 350.0: ("#e11", ""), 370.0: ("#111", "")}
-    legend_y = top + 28
-    parts.append(f'<circle cx="{left+17}" cy="{legend_y}" r="4" fill="#0645e5"/><text x="{left+38}" y="{legend_y+6}" font-size="18">OVIRS 4 um data</text>')
-    for row, gamma in enumerate((330.0, 350.0, 370.0), 1):
-        color, dash = colors[gamma]
-        curves = [cyclic_interpolate(model[day][gamma], plot_phase - best_shift) for day in datasets]
-        curve = np.mean(curves, axis=0)
-        points = " ".join(f"{sx(x):.2f},{sy(y):.2f}" for x, y in zip(plot_phase, curve))
-        dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
-        parts.append(f'<polyline points="{points}" fill="none" stroke="{color}" stroke-width="2.5"{dash_attr}/>')
-        y = legend_y + row * 28
-        parts.append(f'<line x1="{left+2}" y1="{y}" x2="{left+32}" y2="{y}" stroke="{color}" stroke-width="2.5"{dash_attr}/><text x="{left+38}" y="{y+6}" font-size="18">{int(gamma)}</text>')
-    for data in datasets.values():
+             '<style>text{font-family:Arial,sans-serif;fill:#111}.axis{stroke:#222;stroke-width:1.4}.grid{stroke:#dedede;stroke-width:1}</style>',
+             '<defs>',
+             f'<clipPath id="panel0"><rect x="{left}" y="{panel_top}" width="{right-left}" height="{panel_height}"/></clipPath>',
+             f'<clipPath id="panel1"><rect x="{left}" y="{panel_top+panel_height+panel_gap}" width="{right-left}" height="{panel_height}"/></clipPath>',
+             '</defs>',
+             f'<text x="{width/2}" y="32" text-anchor="middle" font-size="24" font-weight="bold">OVIRS 4 um observations and ATPM model light curves</text>',
+             f'<text x="{width/2}" y="57" text-anchor="middle" font-size="15">Same absolute-radiance scale; roughness fraction=0.77; model mesh={facet_count} facets</text>']
+
+    # 图例明确同时编码颜色、线型和物理含义；蓝色只用于观测点。
+    legend_items = [(150, 92, "observation", "OVIRS observation (blue points)")]
+    legend_items.extend([(420 if i % 2 == 0 else 770, 92+35*(i//2), gamma,
+                          styles[gamma][3]) for i, gamma in enumerate(plotted_gammas)])
+    for x, y, kind, label in legend_items:
+        if kind == "observation":
+            parts.append(f'<circle cx="{x+18}" cy="{y}" r="4" fill="#1565c0"/><text x="{x+38}" y="{y+6}" font-size="15">{label}</text>')
+        else:
+            color, dash, stroke_width, _ = styles[kind]
+            dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
+            parts.append(f'<line x1="{x}" y1="{y}" x2="{x+42}" y2="{y}" stroke="{color}" stroke-width="{stroke_width}"{dash_attr}/><text x="{x+52}" y="{y+6}" font-size="15">{label}</text>')
+
+    y_ticks = np.linspace(ymin, ymax, 6)
+    for panel, (day, data) in enumerate(datasets.items()):
+        top = panel_top+panel*(panel_height+panel_gap)
+        bottom = top+panel_height
+        for tick in np.linspace(0, 1, 6):
+            x = sx(tick)
+            parts.extend([f'<line class="grid" x1="{x}" y1="{top}" x2="{x}" y2="{bottom}"/>',
+                          f'<text x="{x}" y="{bottom+23}" text-anchor="middle" font-size="14">{tick:.1f}</text>'])
+        for tick in y_ticks:
+            y = sy(tick, top)
+            parts.extend([f'<line class="grid" x1="{left}" y1="{y:.2f}" x2="{right}" y2="{y:.2f}"/>',
+                          f'<text x="{left-12}" y="{y+5:.2f}" text-anchor="end" font-size="14">{tick/1e-4:.2f}</text>'])
+        parts.extend([f'<rect x="{left}" y="{top}" width="{right-left}" height="{panel_height}" fill="none" class="axis"/>',
+                      f'<text x="{left+12}" y="{top+24}" font-size="17" font-weight="bold">{day}</text>'])
+        for gamma in plotted_gammas:
+            color, dash, stroke_width, _ = styles[gamma]
+            dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
+            points = " ".join(f"{sx(x):.2f},{sy(y, top):.2f}"
+                              for x, y in zip(plot_phase, curves[day][gamma]))
+            parts.append(f'<polyline points="{points}" fill="none" stroke="{color}" stroke-width="{stroke_width}"{dash_attr} clip-path="url(#panel{panel})"/>')
         valid = np.isfinite(data["value"])
-        parts.extend(f'<circle cx="{sx(x):.2f}" cy="{sy(y):.2f}" r="2.0" fill="#0645e5"/>'
+        parts.extend(f'<circle cx="{sx(x):.2f}" cy="{sy(y, top):.2f}" r="2.2" fill="#1565c0" opacity="0.82" clip-path="url(#panel{panel})"/>'
                      for x, y in zip(data["phase"][valid], data["value"][valid]))
-    parts.append('</svg>')
+
+    center_y = panel_top+panel_height+panel_gap/2
+    parts.extend([f'<text x="{width/2}" y="{height-45}" text-anchor="middle" font-size="19">Bennu rotation phase (0-1 = one rotation)</text>',
+                  f'<text x="30" y="{center_y}" transform="rotate(-90 30 {center_y})" text-anchor="middle" font-size="17">Thermal radiance (10^-4 W cm^-2 um^-1 sr^-1)</text>',
+                  f'<text x="{width/2}" y="{height-18}" text-anchor="middle" font-size="13">Blue points are measured radiance; lines are ATPM simulations evaluated at the same observing geometry.</text>',
+                  '</svg>'])
     path.write_text("\n".join(parts), encoding="utf-8")
 
 
@@ -542,11 +590,12 @@ def main():
         "phase_epoch_utc": datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat(),
     }
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
-    # 图中的三条论文参考曲线与本次 Γ 扫描范围分开计算，因此窄范围审计扫描也能绘图。
+    # 当前最佳值与三条论文参考曲线一起计算并与观测同图展示。
     if not args.skip_figure:
         figure_mesh = fit_mesh if args.skip_full_shape_figure else mesh
         figure_model = display_models(
-            figure_mesh, datasets, roughness_fraction=0.77, model_phases=args.model_phases,
+            figure_mesh, datasets, roughness_fraction=0.77,
+            gammas=(best_gamma, 330.0, 350.0, 370.0), model_phases=args.model_phases,
             facet_chunk_size=args.facet_chunk_size,
             self_heating_iterations=args.self_heating_iterations,
             crater_theta_bins=args.crater_theta_bins,
@@ -555,7 +604,8 @@ def main():
             global_self_heating=not args.disable_global_self_heating,
             view_factor_cache=args.view_factor_cache)
         write_figure(args.output / "supplementary_figure_2b_reproduction.svg",
-                     datasets, figure_model, best_shift)
+                     datasets, figure_model, best_shift, best_gamma,
+                     len(figure_mesh.faces))
     print(json.dumps(summary, indent=2, ensure_ascii=False), flush=True)
 
 
