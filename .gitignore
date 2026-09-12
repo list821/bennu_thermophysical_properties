@@ -31,6 +31,7 @@ output/*
 !output/supplementary_fig2b/
 output/supplementary_fig2b/*
 !output/supplementary_fig2b/summary.json
+!output/supplementary_fig2b/ovirs_gamma_fit_metrics.csv
 !output/supplementary_fig2b/ovirs_gamma_phase_chi2.csv
 !output/supplementary_fig2b/ovirs_thermal_1deg.csv
 !output/supplementary_fig2b/supplementary_figure_2b_reproduction.svg

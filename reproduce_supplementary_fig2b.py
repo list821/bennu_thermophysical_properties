@@ -512,13 +512,35 @@ def sampled_mesh(mesh: Mesh, stride: int) -> Mesh:
                 mesh.areas[index]*stride, f"{mesh.source}; uniform plate stride {stride}")
 
 
+FIT_METRIC_LABELS = {"mae": "MAE", "rmse": "RMSE", "chi2": "χ²"}
+
+
+def residual_fit_metrics(prediction, observation, sigma):
+    """计算互补残差指标；MAE/RMSE 不使用观测方差，χ² 仅作加权诊断。"""
+    prediction = np.asarray(prediction, dtype=float)
+    observation = np.asarray(observation, dtype=float)
+    sigma = np.asarray(sigma, dtype=float)
+    valid = np.isfinite(prediction) & np.isfinite(observation)
+    if not np.any(valid):
+        return {"mae": np.inf, "rmse": np.inf, "chi2": np.inf}
+    residual = prediction[valid] - observation[valid]
+    mae = float(np.mean(np.abs(residual)))
+    rmse = float(np.sqrt(np.mean(residual**2)))
+    weighted = valid & np.isfinite(sigma) & (sigma > 0)
+    chi2 = (float(np.sum(((prediction[weighted]-observation[weighted]) /
+                          sigma[weighted])**2)) if np.any(weighted) else np.inf)
+    return {"mae": mae, "rmse": rmse, "chi2": chi2}
+
+
 def fit_gamma(mesh, datasets, combined, gammas, roughness_fraction, model_phases,
               crater_theta_bins=8, crater_azimuth_bins=16,
               facet_chunk_size=64, self_heating_iterations=4,
               global_shadowing=True, global_self_heating=True,
               view_factor_cache: Path | None = None,
-              curve_cache: Path | None = None):
-    """逐个 Γ 正演并以两个观测日的加权残差联合搜索最小 χ²。"""
+              curve_cache: Path | None = None, fit_metric="mae"):
+    """逐个 Γ 正演；默认以两日观测的 MAE 选优，不使用 sigma/方差加权。"""
+    if fit_metric not in FIT_METRIC_LABELS:
+        raise ValueError(f"Unsupported fit metric: {fit_metric}")
     fit_cache = None
     if view_factor_cache is not None:
         fit_cache = str(view_factor_cache.with_name(
@@ -567,16 +589,22 @@ def fit_gamma(mesh, datasets, combined, gammas, roughness_fraction, model_phases
     using_spice = all(np.any(np.isfinite(data["heliocentric_distance_au"]))
                       for data in datasets.values())
     shifts = np.array([0.0]) if using_spice else np.arange(360)/360.0
-    chi2 = np.zeros((len(gammas), len(shifts)))
-    valid = np.isfinite(combined["value"]) & np.isfinite(combined["sigma"])
+    metric_grids = {
+        name: np.full((len(gammas), len(shifts)), np.inf, dtype=float)
+        for name in FIT_METRIC_LABELS
+    }
     for gi, gamma in enumerate(gammas):
         for si, shift in enumerate(shifts):
             prediction = combined_model_curve(
                 model, combined, float(gamma), combined["phase"]-shift)
-            chi2[gi, si] = np.sum(
-                ((prediction[valid]-combined["value"][valid])/combined["sigma"][valid])**2)
-    best_index = np.unravel_index(np.argmin(chi2), chi2.shape)
-    return model, shifts, chi2, float(gammas[best_index[0]]), float(shifts[best_index[1]])
+            scores = residual_fit_metrics(
+                prediction, combined["value"], combined["sigma"])
+            for name, score in scores.items():
+                metric_grids[name][gi, si] = score
+    objective = metric_grids[fit_metric]
+    best_index = np.unravel_index(np.argmin(objective), objective.shape)
+    return (model, shifts, metric_grids, float(gammas[best_index[0]]),
+            float(shifts[best_index[1]]))
 
 
 def display_models(mesh, datasets, roughness_fraction,
@@ -646,7 +674,8 @@ def write_combined_csv(path, combined):
             ])
 
 
-def write_figure(path, datasets, combined, model, best_shift, best_gamma, facet_count):
+def write_figure(path, datasets, combined, model, best_shift, best_gamma, facet_count,
+                 fit_metric="mae"):
     """把两天合并观测、被拒原始帧和 ATPM 曲线画在同一张单周期图中。"""
     width, height = 1120, 690
     left, right, top, bottom = 125, 1080, 175, 575
@@ -673,7 +702,7 @@ def write_figure(path, datasets, combined, model, best_shift, best_gamma, facet_
 
     styles = {
         float(best_gamma): ("#d62728", "", 3.4,
-                            f"当前最佳拟合：Γ={best_gamma:g}（红色实线）"),
+                            f"当前 {FIT_METRIC_LABELS[fit_metric]} 最佳：Γ={best_gamma:g}（红色实线）"),
         330.0: ("#2ca02c", "10 6", 2.4, "论文参考：Γ=330（绿色虚线）"),
         350.0: ("#ff7f0e", "12 5 2 5", 2.4,
                 "论文参考：Γ=350（橙色点划线）"),
@@ -731,7 +760,7 @@ def write_figure(path, datasets, combined, model, best_shift, best_gamma, facet_
 
     parts.extend([f'<text x="{width/2}" y="{height-57}" text-anchor="middle" font-size="18">Bennu 自转相位（0-1 为一个完整自转周期）</text>',
                   f'<text x="30" y="{(top+bottom)/2}" transform="rotate(-90 30 {(top+bottom)/2})" text-anchor="middle" font-size="16">热辐亮度（10^-4 W cm^-2 μm^-1 sr^-1）</text>',
-                  f'<text x="{width/2}" y="{height-24}" text-anchor="middle" font-size="13">蓝点参与 χ² 反演；灰点不参与。所有模型线均由两天各自 SPICE 几何计算后按有效帧数合并。</text>',
+                  f'<text x="{width/2}" y="{height-24}" text-anchor="middle" font-size="13">蓝点参与 {FIT_METRIC_LABELS[fit_metric]} 反演；灰点不参与。所有模型线均由两天各自 SPICE 几何计算后按有效帧数合并。</text>',
                   '</svg>'])
     path.write_text("\n".join(parts), encoding="utf-8")
 
@@ -750,6 +779,8 @@ def main():
     parser.add_argument("--gamma-min", type=float, default=0.0)
     parser.add_argument("--gamma-max", type=float, default=600.0)
     parser.add_argument("--gamma-step", type=float, default=10.0)
+    parser.add_argument("--fit-metric", choices=tuple(FIT_METRIC_LABELS), default="mae",
+                        help="Gamma selection criterion: mae (default, no sigma/variance weighting), rmse, or chi2")
     parser.add_argument("--model-phases", type=int, default=64)
     parser.add_argument("--fit-facet-stride", type=int, default=16,
                         help="uniform plate subsampling for the full Gamma scan")
@@ -795,7 +826,7 @@ def main():
     write_binned_csv(args.output / "ovirs_thermal_1deg_by_day.csv", datasets)
     write_combined_csv(args.output / "ovirs_thermal_1deg.csv", combined)
     gammas = np.arange(args.gamma_min, args.gamma_max + args.gamma_step / 2, args.gamma_step)
-    model, shifts, chi2, best_gamma, best_shift = fit_gamma(
+    model, shifts, metric_grids, best_gamma, best_shift = fit_gamma(
         fit_mesh, datasets, combined, gammas, roughness_fraction=0.77,
         model_phases=args.model_phases, facet_chunk_size=args.facet_chunk_size,
         self_heating_iterations=args.self_heating_iterations,
@@ -804,20 +835,44 @@ def main():
         global_shadowing=not args.disable_global_shadowing,
         global_self_heating=not args.disable_global_self_heating,
         view_factor_cache=args.view_factor_cache,
-        curve_cache=args.output / "model_curve_cache"
+        curve_cache=args.output / "model_curve_cache", fit_metric=args.fit_metric
     )
+    observation_scale = float(np.nanmean(np.abs(combined["value"])))
+    with (args.output / "ovirs_gamma_fit_metrics.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.writer(stream)
+        writer.writerow(["thermal_inertia", "phase_shift", "selection_metric",
+                         "selection_score", "mae", "mae_percent", "rmse",
+                         "rmse_percent", "chi2_diagnostic"])
+        for gi, gamma in enumerate(gammas):
+            for si, shift in enumerate(shifts):
+                mae = metric_grids["mae"][gi, si]
+                rmse = metric_grids["rmse"][gi, si]
+                writer.writerow([gamma, shift, args.fit_metric,
+                                 metric_grids[args.fit_metric][gi, si], mae,
+                                 100.0*mae/observation_scale, rmse,
+                                 100.0*rmse/observation_scale,
+                                 metric_grids["chi2"][gi, si]])
+    # 保留旧文件名供已有分析脚本使用；它现在明确只是诊断量，不决定默认最佳值。
     with (args.output / "ovirs_gamma_phase_chi2.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(["thermal_inertia", "phase_shift", "chi2"])
         for gi, gamma in enumerate(gammas):
-            writer.writerows((gamma, shift, chi2[gi, si]) for si, shift in enumerate(shifts))
-    profile = np.min(chi2, axis=1)
-    inside = gammas[profile <= np.min(profile) + 1.0]
-    data_count = int(np.count_nonzero(
-        np.isfinite(combined["value"]) & np.isfinite(combined["sigma"])))
-    degrees_of_freedom = max(1, data_count - 2)
-    reduced_chi2 = float(np.min(chi2) / degrees_of_freedom)
-    scaled_inside = gammas[profile <= np.min(profile) + reduced_chi2]
+            writer.writerows((gamma, shift, metric_grids["chi2"][gi, si])
+                             for si, shift in enumerate(shifts))
+    objective = metric_grids[args.fit_metric]
+    best_index = np.unravel_index(np.argmin(objective), objective.shape)
+    chi2_profile = np.min(metric_grids["chi2"], axis=1)
+    chi2_best_index = np.unravel_index(
+        np.argmin(metric_grids["chi2"]), metric_grids["chi2"].shape)
+    inside = gammas[chi2_profile <= np.min(chi2_profile) + 1.0]
+    data_count = int(np.count_nonzero(np.isfinite(combined["value"])))
+    fitted_parameter_count = 1 + int(len(shifts) > 1)
+    degrees_of_freedom = max(1, data_count - fitted_parameter_count)
+    reduced_chi2 = float(np.min(metric_grids["chi2"]) / degrees_of_freedom)
+    scaled_inside = gammas[chi2_profile <= np.min(chi2_profile) + reduced_chi2]
+    best_mae = float(metric_grids["mae"][best_index])
+    best_rmse = float(metric_grids["rmse"][best_index])
+    best_chi2 = float(metric_grids["chi2"][best_index])
     summary = {
         "status": "public PDS L2 reconstructed to paper-like OVIRS thermal series",
         "strict_paper_reproduction": False,
@@ -859,15 +914,27 @@ def main():
         "shape_facets": int(len(mesh.faces)),
         "fit_grid_facets": int(len(fit_mesh.faces)),
         "fit_facet_stride": int(args.fit_facet_stride),
-        "best_fit": {"thermal_inertia": best_gamma, "phase_shift": best_shift,
-                     "chi2": float(np.min(chi2)),
-                     "degrees_of_freedom": degrees_of_freedom,
-                     "reduced_chi2": reduced_chi2,
-                     "delta_chi2_1_interval": ([float(inside.min()), float(inside.max())]
-                                               if len(inside) else None),
-                     "model_discrepancy_scaled_interval": (
-                         [float(scaled_inside.min()), float(scaled_inside.max())]
-                         if len(scaled_inside) else None)},
+        "best_fit": {"selection_metric": args.fit_metric,
+                     "selection_metric_label": FIT_METRIC_LABELS[args.fit_metric],
+                     "thermal_inertia": best_gamma, "phase_shift": best_shift,
+                     "selection_score": float(objective[best_index]),
+                     "mae": best_mae,
+                     "mae_percent_of_mean_observation": 100.0*best_mae/observation_scale,
+                     "rmse": best_rmse,
+                     "rmse_percent_of_mean_observation": 100.0*best_rmse/observation_scale,
+                     "chi2_diagnostic": best_chi2,
+                     "uncertainty_note": "MAE/RMSE do not by themselves define a statistical confidence interval; bootstrap the frames for uncertainty."},
+        "chi2_diagnostic": {
+            "thermal_inertia": float(gammas[chi2_best_index[0]]),
+            "phase_shift": float(shifts[chi2_best_index[1]]),
+            "chi2": float(metric_grids["chi2"][chi2_best_index]),
+            "degrees_of_freedom": degrees_of_freedom,
+            "reduced_chi2": reduced_chi2,
+            "delta_chi2_1_interval": ([float(inside.min()), float(inside.max())]
+                                      if len(inside) else None),
+            "model_discrepancy_scaled_interval": (
+                [float(scaled_inside.min()), float(scaled_inside.max())]
+                if len(scaled_inside) else None)},
         "paper_reference": {"thermal_inertia": 350.0, "sigma": 20.0,
                             "figure_curves": [330.0, 350.0, 370.0]},
         "limitations": ["public archive contains L2 v2, not authors' processed L3a array",
@@ -876,7 +943,8 @@ def main():
                         "Gamma scan uniformly subsamples shape plates for runtime; plotted curves can use all plates",
                         "per-frame SPICE geometry is binned/interpolated to the thermal solver phase grid",
                         "global mutual heating is solved on the smooth macro-facet endpoint and reused as an external field for rough microfacets, not fully coupled",
-                        "reduced chi-square above unity means the formal Delta-chi-square interval is not a reliable physical uncertainty"],
+                        "default Gamma selection uses MAE and therefore does not use sigma/variance weights",
+                        "chi-square is retained only as a diagnostic; above-unity reduced chi-square means its formal Delta-chi-square interval is not a reliable physical uncertainty"],
         "phase_epoch_utc": datetime.fromtimestamp(epoch, tz=timezone.utc).isoformat(),
     }
     (args.output / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -895,7 +963,7 @@ def main():
             view_factor_cache=args.view_factor_cache)
         write_figure(args.output / "supplementary_figure_2b_reproduction.svg",
                      datasets, combined, figure_model, best_shift, best_gamma,
-                     len(figure_mesh.faces))
+                     len(figure_mesh.faces), fit_metric=args.fit_metric)
     print(json.dumps(summary, indent=2, ensure_ascii=False), flush=True)
 
 

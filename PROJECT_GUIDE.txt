@@ -13,7 +13,7 @@ BENNU ATPM 项目说明
   -> 按 Bennu 自转相位每 1 度分箱
   -> 用 SPICE 计算逐帧太阳、航天器、OVIRS 视轴和 FOV
   -> SPCv14 三角形形状上的 ATPM 正演
-  -> 扫描热惯量 Gamma 并计算 chi-square
+  -> 扫描热惯量 Gamma，默认用不依赖方差权重的 MAE 选择最佳值
   -> 输出最佳值、表格和补充图 2b 风格曲线。
 
 
@@ -21,7 +21,7 @@ BENNU ATPM 项目说明
 ------------------------
 
 reproduce_supplementary_fig2b.py
-  唯一正式入口。组织读取、逐帧处理、SPICE、1 度分箱、ATPM 网格和 chi-square。
+  唯一正式入口。组织读取、逐帧处理、SPICE、1 度分箱、ATPM 网格和拟合指标。
 
 pds_observations.py
   读取 OVIRS FITS/XML；返回 20×512 的辐亮度、波长、不确定度和质量数组；执行
@@ -235,7 +235,8 @@ OVIRS 中心波长=4.00038 um；近似 FWHM=0.00641 um。
 8. fit_gamma() 对每个 Gamma 调用 simulate()。
 9. simulate() 计算光滑端元和全半球坑端元的温度及 4 um 辐射。
 10. mixed_detector(0.77) 按式(24)混合两个端元，并通过 OVIRS 孔径响应积分。
-11. 模型与两天一度分箱辐亮度比较，求 chi-square 最小的 Gamma。
+11. 模型与两天一度分箱辐亮度比较，默认求 MAE 最小的 Gamma。MAE 是绝对残差的
+    平均值，不使用 sigma 或方差加权；可用 --fit-metric rmse 或 --fit-metric chi2 切换。
 12. 保存表格、summary.json 和 SVG。
 
 
@@ -252,14 +253,18 @@ ovirs_thermal_1deg.csv
   每个日期每一度相位一行。value 是检测器热辐亮度，sigma 是拟合误差，count 是
   该相位箱包含的原始帧数。
 
+ovirs_gamma_fit_metrics.csv
+  每个 Gamma 的 MAE、RMSE、相对误差百分比和诊断 chi2。selection_score 最小的行给出
+  当前 --fit-metric 所选择的最佳热惯量。这是默认查看的拟合结果表。
+
 ovirs_gamma_phase_chi2.csv
-  thermal_inertia、phase_shift、chi2。使用 SPICE 时 phase_shift 固定为 0。
-  chi2 最小行给出当前模型的最佳热惯量。
+  thermal_inertia、phase_shift、chi2。为了兼容旧分析而保留；默认 MAE 运行时 chi2
+  仅为诊断量，不再决定最佳热惯量。使用 SPICE 时 phase_shift 固定为 0。
 
 summary.json
-  输入数量、形状来源、坑壁分辨率、SPICE 设置、最佳 Gamma、chi-square、论文参考值
-  和限制说明。当前保留结果约为 Gamma=184，但 reduced chi-square 约 433，说明它
-  仍不是论文 350±20 的统计等价复现。
+  输入数量、形状来源、坑壁分辨率、SPICE 设置、所用选择指标、最佳 Gamma、MAE、
+  RMSE、诊断 chi-square、论文参考值和限制说明。MAE/RMSE 本身不给出统计置信区间；
+  如需误差条，应对原始帧重新抽样做 bootstrap。
 
 supplementary_figure_2b_reproduction.svg
   蓝点是一度分箱 OVIRS 4 um 热辐亮度；三条模型线对应 Gamma=330、350、370。

@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 
+from reproduce_supplementary_fig2b import residual_fit_metrics
 from bennu_atpm import (ModelCurves, ThermoConfig, crater_fraction_to_rms_deg,
                         make_bennu_proxy_mesh, planck_lambda, planck_ovirs_response,
                         ovirs_aperture_fill, rms_deg_to_crater_fraction, simulate,
@@ -20,6 +21,20 @@ class BennuAtpmTests(unittest.TestCase):
         convolved = planck_ovirs_response(temperature, 4.00038, 0.00641)
         self.assertEqual(convolved.shape, temperature.shape)
         self.assertTrue(np.all(np.diff(convolved[0]) > 0))
+
+    def test_mae_selection_does_not_use_variance(self):
+        """默认 MAE 只看绝对残差；改变 sigma 不得改变 MAE/RMSE。"""
+        prediction = np.array([1.0, 3.0])
+        observation = np.array([2.0, 1.0])
+        first = residual_fit_metrics(
+            prediction, observation, np.array([0.1, 10.0]))
+        second = residual_fit_metrics(
+            prediction, observation, np.array([10.0, 0.1]))
+        self.assertAlmostEqual(first["mae"], 1.5)
+        self.assertAlmostEqual(first["rmse"], np.sqrt(2.5))
+        self.assertEqual(first["mae"], second["mae"])
+        self.assertEqual(first["rmse"], second["rmse"])
+        self.assertNotEqual(first["chi2"], second["chi2"])
 
     def test_paper_roughness_mapping(self):
         self.assertAlmostEqual(crater_fraction_to_rms_deg(.77), 43., places=10)

@@ -72,19 +72,17 @@
   "fit_grid_facets": 96,
   "fit_facet_stride": 128,
   "best_fit": {
-    "thermal_inertia": 190.0,
+    "selection_metric": "mae",
+    "selection_metric_label": "MAE",
+    "thermal_inertia": 180.0,
     "phase_shift": 0.0,
-    "chi2": 197791.4816532315,
-    "degrees_of_freedom": 358,
-    "reduced_chi2": 552.4901722157305,
-    "delta_chi2_1_interval": [
-      190.0,
-      190.0
-    ],
-    "model_discrepancy_scaled_interval": [
-      190.0,
-      190.0
-    ]
+    "selection_score": 9.94248444538606e-06,
+    "mae": 9.94248444538606e-06,
+    "mae_percent_of_mean_observation": 8.850820498958651,
+    "rmse": 1.3722808301476487e-05,
+    "rmse_percent_of_mean_observation": 12.216072721577381,
+    "chi2_diagnostic": 214651.03942545777,
+    "uncertainty_note": "MAE/RMSE do not by themselves define a statistical confidence interval; bootstrap the frames for uncertainty."
   },
   "paper_reference": {
     "thermal_inertia": 350.0,
@@ -102,7 +100,24 @@
     "Gamma scan uniformly subsamples shape plates for runtime; plotted curves can use all plates",
     "per-frame SPICE geometry is binned/interpolated to the thermal solver phase grid",
     "global mutual heating is solved on the smooth macro-facet endpoint and reused as an external field for rough microfacets, not fully coupled",
-    "reduced chi-square above unity means the formal Delta-chi-square interval is not a reliable physical uncertainty"
+    "reduced chi-square above unity means the formal Delta-chi-square interval is not a reliable physical uncertainty",
+    "default Gamma selection uses MAE and therefore does not use sigma/variance weights",
+    "chi-square is retained only as a diagnostic; above-unity reduced chi-square means its formal Delta-chi-square interval is not a reliable physical uncertainty"
   ],
-  "phase_epoch_utc": "2018-11-02T04:12:36.859000+00:00"
+  "phase_epoch_utc": "2018-11-02T04:12:36.859000+00:00",
+  "chi2_diagnostic": {
+    "thermal_inertia": 190.0,
+    "phase_shift": 0.0,
+    "chi2": 197791.4816532315,
+    "degrees_of_freedom": 359,
+    "reduced_chi2": 550.9512023766894,
+    "delta_chi2_1_interval": [
+      190.0,
+      190.0
+    ],
+    "model_discrepancy_scaled_interval": [
+      190.0,
+      190.0
+    ]
+  }
 }
