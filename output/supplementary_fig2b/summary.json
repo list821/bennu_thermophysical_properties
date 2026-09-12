@@ -2,14 +2,47 @@
   "status": "public PDS L2 reconstructed to paper-like OVIRS thermal series",
   "strict_paper_reproduction": false,
   "input_fits": 34254,
-  "accepted_frames": 34254,
-  "binning": "1 degree rotational phase; fit uses reflected-light-subtracted L2 detector radiance without division by PDS FILL_FAC",
+  "accepted_frames": 24667,
+  "rejected_frames": 9587,
+  "quality_and_aperture_correction": {
+    "total_frames": 34254,
+    "accepted_frames": 24667,
+    "rejected_frames": 9587,
+    "max_boresight_angle_deg": 0.03,
+    "fill_factor_range": [
+      0.32,
+      0.44
+    ],
+    "rejection_reason_counts": {
+      "CK_IK_boresight_offset_too_large": 9583,
+      "BS_FLAG_not_1": 4758,
+      "PDS_FILL_FAC_outside_range": 4130,
+      "invalid_aperture_coupling": 442
+    },
+    "aperture_correction_factor_min_median_max": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "correction": "CK/IK+SPCv14 actual-to-centered aperture coupling surrogate",
+    "author_l3a_array_available": false,
+    "interday_gain_normalization": {
+      "reference_date": "2018-11-02",
+      "normalized_date": "2018-11-03",
+      "overlap_phase_bins": 286,
+      "robust_phase_bins": 286,
+      "multiplicative_factor": 0.9185044830361486,
+      "ratio_mad": 0.006996424047937192,
+      "method": "median same-rotation-phase L2 ratio; independent of ATPM model"
+    }
+  },
+  "binning": "accepted frames from both dates folded to one rotation and combined in 1-degree bins",
   "reflection_removal": "PDS OSIRIS-REx project solar spectrum scaled over 2.05-2.15 um; flat reflectance; Figure 2b samples averaged over 3.98-4.02 um",
   "radiance_products": {
     "detector": "public L2 radiance after reflected-sunlight subtraction",
-    "fit_quantity": "detector thermal radiance, compared with the CK/IK aperture-integrated model",
+    "fit_quantity": "actual-to-centered CK/IK aperture-corrected radiance; both dates combined by rotational phase",
     "disk_equivalent_diagnostic": "detector thermal radiance divided by PDS FILL_FAC; retained for diagnostics and not fitted",
-    "underfilled_fov_warning": "public calibration documentation reports possible artifacts; no author L3a empirical correction array is public"
+    "underfilled_fov_warning": "author L3a array is unavailable; this run uses SPCv14+CK/IK aperture coupling plus model-independent repeat-cycle gain normalization"
   },
   "roughness": {
     "crater_fraction": 0.77,
@@ -23,7 +56,8 @@
     "crater_wall_elements": 128,
     "self_heating_iterations": 4,
     "global_shape_shadowing": true,
-    "global_shape_mutual_heating": true
+    "global_shape_mutual_heating_smooth_endpoint": true,
+    "rough_global_coupling": "smooth-endpoint external field approximation"
   },
   "spice_geometry": {
     "enabled": true,
@@ -33,23 +67,23 @@
     "kernel_set": "SPCv14-compatible: bennu_v14 PCK + reconstructed 2018 ORX SPK/CK + OVIRS v00 IK",
     "free_rotation_phase_shift": false
   },
-  "shape": "D:\\ChatGPT\\热物理反演\\data\\shape\\g_12560mm_spc_obj_0000n00000_v014.obj (PDS km coordinates converted to m)",
+  "shape": "E:\\ChatGPT\\热物理反演\\data\\shape\\g_12560mm_spc_obj_0000n00000_v014.obj (PDS km coordinates converted to m)",
   "shape_facets": 12288,
   "fit_grid_facets": 96,
   "fit_facet_stride": 128,
   "best_fit": {
-    "thermal_inertia": 184.0,
+    "thermal_inertia": 190.0,
     "phase_shift": 0.0,
-    "chi2": 310994.1626375793,
-    "degrees_of_freedom": 718,
-    "reduced_chi2": 433.1395022807511,
+    "chi2": 197791.4816532315,
+    "degrees_of_freedom": 358,
+    "reduced_chi2": 552.4901722157305,
     "delta_chi2_1_interval": [
-      184.0,
-      184.0
+      190.0,
+      190.0
     ],
     "model_discrepancy_scaled_interval": [
-      183.0,
-      184.0
+      190.0,
+      190.0
     ]
   },
   "paper_reference": {
@@ -63,10 +97,11 @@
   },
   "limitations": [
     "public archive contains L2 v2, not authors' processed L3a array",
-    "PDS FILL_FAC is a diagnostic occupancy fraction and is not divided into the fitted radiance",
-    "public calibration documentation notes underfilled-FOV artifacts but no author-specific L3a correction array is public",
+    "PDS FILL_FAC is used only as a quality cut; correction is not division by FILL_FAC",
+    "underfilled-FOV correction is an SPCv14+CK/IK centered-aperture surrogate because the author L3a array is not public",
     "Gamma scan uniformly subsamples shape plates for runtime; plotted curves can use all plates",
     "per-frame SPICE geometry is binned/interpolated to the thermal solver phase grid",
+    "global mutual heating is solved on the smooth macro-facet endpoint and reused as an external field for rough microfacets, not fully coupled",
     "reduced chi-square above unity means the formal Delta-chi-square interval is not a reliable physical uncertainty"
   ],
   "phase_epoch_utc": "2018-11-02T04:12:36.859000+00:00"

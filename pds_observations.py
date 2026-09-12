@@ -89,6 +89,8 @@ def read_ovirs_product(path: str | Path) -> dict[str, object]:
         mid_obs = str(header["MIDOBS"])
         spatial = {
             "bore_flag": float(header.get("BS_FLAG", -1)),
+            "fov_flag": float(header.get("FOV_FLAG", -1)),
+            "boresight_angle_deg": float(header.get("BS_ANGLE", np.nan)),
             "fov_fill_factor": float(header.get("FILL_FAC", np.nan)),
             "phase_angle": float(header.get("PHASEANG", np.nan)),
             "sun_range": float(header.get("SUN_RNG", np.nan)),
@@ -102,6 +104,21 @@ def read_ovirs_product(path: str | Path) -> dict[str, object]:
         "wavelength_um": wavelength,
         "uncertainty": uncertainty,
         **spatial,
+    }
+
+
+def read_ovirs_pointing_metadata(path: str | Path) -> dict[str, float]:
+    """只读 FITS 主头中的指向质量字段，不加载四个大型光谱数组。
+
+    这个轻量入口用于给旧的逐帧光谱缓存补充 BS_FLAG、FOV_FLAG、
+    BS_ANGLE 和 FILL_FAC，避免因增加质量筛选而重新处理全部光谱。
+    """
+    header = _fits_primary_header(Path(path))
+    return {
+        "bore_flag": float(header.get("BS_FLAG", -1)),
+        "fov_flag": float(header.get("FOV_FLAG", -1)),
+        "boresight_angle_deg": float(header.get("BS_ANGLE", np.nan)),
+        "fov_fill_factor": float(header.get("FILL_FAC", np.nan)),
     }
 
 

@@ -311,6 +311,25 @@ def _ovirs_aperture(mesh: Mesh, observer_directions: np.ndarray,
     return response_over_range2, np.clip(fill, 0, 1)
 
 
+def ovirs_aperture_fill(mesh: Mesh, observer_directions: np.ndarray,
+                        observer_distances_km: np.ndarray,
+                        boresight_directions: np.ndarray,
+                        fov_half_angles_rad: np.ndarray) -> np.ndarray:
+    """返回 CK/IK 视轴下 Bennu 对 OVIRS 有效孔径的逐帧耦合比例。
+
+    该量是 SPC 面元投影立体角经过 OVIRS 径向孔径响应加权后的积分，不能与
+    PDS FILL_FAC 简单等同。公开 L2 到论文 L3a 的替代校正使用实际指向与
+    中心指向的本函数结果之比，因此不会把辐亮度直接除以约 0.37。
+    """
+    aperture = _ovirs_aperture(mesh, np.asarray(observer_directions, float),
+                               np.asarray(observer_distances_km, float),
+                               np.asarray(boresight_directions, float),
+                               np.asarray(fov_half_angles_rad, float))
+    if aperture is None:
+        raise ValueError("OVIRS aperture fill requires distance, boresight and FOV arrays")
+    return aperture[1]
+
+
 def _hemispherical_crater_geometry(config: ThermoConfig) -> CraterGeometry:
     """生成论文所用 90° spherical-section crater 的等面积求积网格。
 

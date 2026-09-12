@@ -3,7 +3,7 @@ import numpy as np
 
 from bennu_atpm import (ModelCurves, ThermoConfig, crater_fraction_to_rms_deg,
                         make_bennu_proxy_mesh, planck_lambda, planck_ovirs_response,
-                        rms_deg_to_crater_fraction, simulate,
+                        ovirs_aperture_fill, rms_deg_to_crater_fraction, simulate,
                         _crater_aperture_visibility, _crater_local_geometry,
                         _facet_bases, _hemispherical_crater_geometry,
                         _multiple_scattered_solar)
@@ -33,6 +33,20 @@ class BennuAtpmTests(unittest.TestCase):
         self.assertEqual(curves.smooth_4um.shape, (32,))
         self.assertTrue(np.all(np.isfinite(curves.crater_14um)))
         self.assertLess(curves.max_boundary_residual_w_m2, 1.)
+
+    def test_ovirs_aperture_fill_decreases_off_axis(self):
+        """CK/IK 孔径耦合在中心指向最大，偏到响应边缘后必须降低。"""
+        mesh = make_bennu_proxy_mesh(8, 16)
+        observer = np.array([[1.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
+        centered = np.array([[-1.0, 0.0, 0.0], [-1.0, 0.0, 0.0]])
+        offset = 1.5e-3
+        boresight = centered.copy()
+        boresight[1] = [-np.cos(offset), np.sin(offset), 0.0]
+        fill = ovirs_aperture_fill(
+            mesh, observer, np.array([190.0, 190.0]), boresight,
+            np.array([2.01e-3, 2.01e-3]))
+        self.assertGreater(fill[0], 0.0)
+        self.assertGreater(fill[0], fill[1])
 
     def test_crater_view_factors_scattering_and_ray_visibility(self):
         cfg = ThermoConfig(crater_theta_bins=3, crater_azimuth_bins=6)
