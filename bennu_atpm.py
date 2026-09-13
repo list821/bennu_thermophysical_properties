@@ -32,13 +32,13 @@ class ThermoConfig:
     heat_capacity: float = 800.0
     phase_angle_deg: float = 5.0
     subsolar_latitude_deg: float = 0.0
-    n_phase: int = 96
+    n_phase: int = 384
     # 正式计算采用 8×16=128 个等面积坑壁积分单元；早期 2×4 网格只适合调试，
     # 无法充分收敛坑口阴影边缘及定向热辐射（thermal beaming）。
     crater_theta_bins: int = 8
     crater_azimuth_bins: int = 16
     facet_chunk_size: int = 64
-    crater_self_heating_iterations: int = 4
+    crater_self_heating_iterations: int = 24
     crater_self_heating_tolerance_k: float = 0.08
     thermal_albedo: float = 0.0
     ovirs_wavelength_um: float = 4.00038
@@ -64,6 +64,16 @@ class Mesh:
     source: str
 
 
+@dataclass(frozen=True)
+class PeriodicTemperatureSolution:
+    """Surface temperature plus nonlinear boundary-solver diagnostics."""
+
+    temperature: np.ndarray
+    residual_max_w_m2: float
+    converged: bool
+    iterations: int
+
+
 @dataclass
 class ModelCurves:
     """一次热惯量正演得到的光变曲线及诊断量。"""
@@ -77,6 +87,12 @@ class ModelCurves:
     smooth_4um_detector: np.ndarray | None = None
     crater_4um_detector: np.ndarray | None = None
     modeled_fov_fill_factor: np.ndarray | None = None
+    thermal_solver_converged: bool = True
+    max_thermal_solver_iterations: int = 0
+    unconverged_thermal_solves: int = 0
+    crater_self_heating_converged: bool = True
+    max_crater_self_heating_iterations: int = 0
+    max_crater_self_heating_delta_k: float = 0.0
 
     def mixed(self, crater_fraction: float) -> tuple[np.ndarray, np.ndarray]:
         """按论文式(24)线性混合光滑面和全坑面结果。"""
@@ -153,11 +169,11 @@ def load_obj(path: str | Path) -> Mesh:
         vertex_array *= 1000.0
         scale_note = " (PDS km coordinates converted to m)"
     return _mesh_from_arrays(vertex_array, np.asarray(faces, int),
-                             str(obj_path.resolve()) + scale_note)
+                             str(obj_path.resolve()) + scale_note)#str(obj_path.resolve())：绝对路径，方便追踪文件来源
 
 
 def make_bennu_proxy_mesh(n_latitude: int = 8, n_longitude: int = 16) -> Mesh:
-    """生成可重复的约 246 m 半径陀螺形代理；它明确不是 SPC v13。"""
+    """生成可重复的约 246 m 半径陀螺形代理；它明确不是 SPC v13。用于测试"""
     if n_latitude < 4 or n_longitude < 8:
         raise ValueError("Need at least 4 latitude and 8 longitude bins")
     vertices = [[0.0, 0.0, -220.0]]
@@ -165,9 +181,9 @@ def make_bennu_proxy_mesh(n_latitude: int = 8, n_longitude: int = 16) -> Mesh:
     for lat in lats:
         for j in range(n_longitude):
             lon = 2*np.pi*j/n_longitude
-            ridge = .105*np.cos(lat)**8
-            flatten = -.055*np.sin(lat)**2
-            irregular = (.018*np.sin(3*lon+.7)+.011*np.cos(5*lon-.4))*np.cos(lat)**2
+            ridge = .105*np.cos(lat)**8 #赤道脊，赤道附近半径增加约 10.5%
+            flatten = -.055*np.sin(lat)**2 #两极扁平，两极半径减少约 5.5%
+            irregular = (.018*np.sin(3*lon+.7)+.011*np.cos(5*lon-.4))*np.cos(lat)**2 #项让赤道附近有 3 倍和 5 倍经度频率的扰动
             r = 246*(1+ridge+flatten+irregular)
             vertices.append([r*np.cos(lat)*np.cos(lon), r*np.cos(lat)*np.sin(lon), r*np.sin(lat)])
     north = len(vertices)
@@ -216,7 +232,8 @@ def skin_depth_m(gamma: float, config: ThermoConfig) -> float:
 
 
 def _periodic_temperature(absorbed: np.ndarray, gamma: float, config: ThermoConfig,
-                          max_iter: int = 300, tolerance: float = .08) -> tuple[np.ndarray, float]:
+                          max_iter: int = 300,
+                          tolerance: float = .08) -> PeriodicTemperatureSolution:
     """在 Fourier 域求半无限介质的一维周期稳态非线性导热。
 
     这与论文在深度/时间网格上迭代至周期稳态所解的物理边值问题相同；差别仅是
@@ -227,20 +244,27 @@ def _periodic_temperature(absorbed: np.ndarray, gamma: float, config: ThermoConf
     eps_sigma = config.emissivity*SIGMA
     # Γ=0 时各时刻互不传热，表面温度可由瞬时辐射平衡直接求得。
     if gamma == 0:
-        return (np.maximum(q, 0)/eps_sigma)**.25, 0.0
+        temperature = (np.maximum(q, 0)/eps_sigma)**.25
+        residual_max = float(np.max(np.abs(q-eps_sigma*temperature**4)))
+        return PeriodicTemperatureSolution(
+            temperature, residual_max, residual_max <= tolerance, 0)
     mean_t = (np.maximum(q.mean(axis=1), eps_sigma*35**4)/eps_sigma)**.25
     instant = (np.maximum(q, eps_sigma*35**4)/eps_sigma)**.25
     temperature = .65*mean_t[:, None]+.35*instant
     omega = 2*np.pi*np.fft.rfftfreq(q.shape[1], d=config.period_s/q.shape[1])
     admittance = gamma*np.sqrt(1j*omega)
     residual_max = np.inf
-    for _ in range(max_iter):
+    converged = False
+    iterations = 0
+    for iteration in range(1, max_iter+1):
+        iterations = iteration
         # 向地下为正的传导通量；能量边界为 q_abs = εσT⁴ + q_cond。
         conduction = np.fft.irfft(np.fft.rfft(temperature, axis=1)*admittance[None, :],
                                   n=q.shape[1], axis=1)
         residual = q-eps_sigma*temperature**4-conduction
         residual_max = float(np.max(np.abs(residual)))
-        if residual_max < tolerance:
+        if residual_max <= tolerance:
+            converged = True
             break
         # 用辐射项的一阶导数作预条件，再以 0.42 欠松弛避免非线性振荡。
         hrad = 4*eps_sigma*np.maximum(np.mean(temperature**3, axis=1), 40**3)
@@ -248,7 +272,17 @@ def _periodic_temperature(absorbed: np.ndarray, gamma: float, config: ThermoConf
                                   (hrad[:, None]+admittance[None, :]),
                                   n=q.shape[1], axis=1)
         temperature = np.clip(temperature+.42*correction, 20, 650)
-    return temperature, residual_max
+    if not converged:
+        # The final loop iteration may update temperature after the last residual
+        # evaluation. Recompute so diagnostics always describe the returned field.
+        conduction = np.fft.irfft(
+            np.fft.rfft(temperature, axis=1)*admittance[None, :],
+            n=q.shape[1], axis=1)
+        residual = q-eps_sigma*temperature**4-conduction
+        residual_max = float(np.max(np.abs(residual)))
+        converged = residual_max <= tolerance
+    return PeriodicTemperatureSolution(
+        temperature, residual_max, converged, iterations)
 
 
 def _directions(config: ThermoConfig):
@@ -408,26 +442,44 @@ def _crater_temperatures(solar_absorbed: np.ndarray, view: np.ndarray,
                          gamma: float, config: ThermoConfig):
     """迭代坑壁热辐射自加热与一维导热，返回各微面元周期温度。"""
     shape = solar_absorbed.shape
-    temperature, residual = _periodic_temperature(
+    solution = _periodic_temperature(
         solar_absorbed.reshape(-1, shape[2]), gamma, config)
-    temperature = temperature.reshape(shape)
+    temperature = solution.temperature.reshape(shape)
+    residual = solution.residual_max_w_m2
+    all_converged = solution.converged
+    max_iterations = solution.iterations
+    unconverged_solves = int(not solution.converged)
     max_delta = np.inf
-    for _ in range(max(0, config.crater_self_heating_iterations)):
+    self_heating_converged = config.crater_self_heating_iterations <= 0
+    self_heating_iterations = 0
+    for outer_iteration in range(1, max(0, config.crater_self_heating_iterations)+1):
+        self_heating_iterations = outer_iteration
         incident_thermal = (config.emissivity*SIGMA*(1-config.thermal_albedo) *
                             np.einsum("ij,fjt->fit", view, temperature**4))
-        updated, residual = _periodic_temperature(
+        solution = _periodic_temperature(
             (solar_absorbed+incident_thermal).reshape(-1, shape[2]), gamma, config)
-        updated = updated.reshape(shape)
+        updated = solution.temperature.reshape(shape)
+        residual = max(residual, solution.residual_max_w_m2)
+        all_converged &= solution.converged
+        max_iterations = max(max_iterations, solution.iterations)
+        unconverged_solves += int(not solution.converged)
         max_delta = float(np.max(np.abs(updated-temperature)))
         temperature = 0.5*temperature+0.5*updated
         if max_delta < config.crater_self_heating_tolerance_k:
+            self_heating_converged = True
             break
     # 用最后一次再吸收热辐射场作一致的终解，避免返回混合迭代的中间温度。
     incident_thermal = (config.emissivity*SIGMA*(1-config.thermal_albedo) *
                         np.einsum("ij,fjt->fit", view, temperature**4))
-    temperature, residual = _periodic_temperature(
+    solution = _periodic_temperature(
         (solar_absorbed+incident_thermal).reshape(-1, shape[2]), gamma, config)
-    return temperature.reshape(shape), float(residual)
+    residual = max(residual, solution.residual_max_w_m2)
+    all_converged &= solution.converged
+    max_iterations = max(max_iterations, solution.iterations)
+    unconverged_solves += int(not solution.converged)
+    return (solution.temperature.reshape(shape), float(residual), all_converged,
+            max_iterations, unconverged_solves, self_heating_converged,
+            self_heating_iterations, float(max_delta))
 
 
 def simulate(mesh: Mesh, gamma: float, config: ThermoConfig = ThermoConfig(),
@@ -475,7 +527,15 @@ def simulate(mesh: Mesh, gamma: float, config: ThermoConfig = ThermoConfig(),
         mu_obs *= observer_visibility(mesh, obs, observer_distances_km, mu_obs > 0)
     # 光滑端元：吸收太阳通量 → 周期稳态表面温度。
     smooth_absorbed = (1-config.bond_albedo)*solar_flux[None, :]*mu_sun
-    smooth_t, res1 = _periodic_temperature(smooth_absorbed, gamma, config)
+    solution = _periodic_temperature(smooth_absorbed, gamma, config)
+    smooth_t = solution.temperature
+    res1 = solution.residual_max_w_m2
+    all_converged = solution.converged
+    max_iterations = solution.iterations
+    unconverged_solves = int(not solution.converged)
+    all_crater_self_heating_converged = True
+    max_crater_self_heating_iterations = 0
+    max_crater_self_heating_delta = 0.0
     global_incident = np.zeros_like(smooth_absorbed)
     if config.global_self_heating:
         # 非凸宏观面元间的长波辐射交换。该迭代只作用于全局形状端元。
@@ -484,10 +544,13 @@ def simulate(mesh: Mesh, gamma: float, config: ThermoConfig = ThermoConfig(),
         for _ in range(max(1, config.global_self_heating_iterations)):
             global_incident = incident_from_emitters(
                 edges, config.emissivity*SIGMA*(1-config.thermal_albedo)*smooth_t**4)
-            updated, res_global = _periodic_temperature(
+            solution = _periodic_temperature(
                 smooth_absorbed+global_incident, gamma, config)
-            smooth_t = .5*smooth_t+.5*updated
-            res1 = max(res1, res_global)
+            smooth_t = .5*smooth_t+.5*solution.temperature
+            res1 = max(res1, solution.residual_max_w_m2)
+            all_converged &= solution.converged
+            max_iterations = max(max_iterations, solution.iterations)
+            unconverged_solves += int(not solution.converged)
     # 可见宏观面元的投影面积，用于把盘积分功率换成盘平均辐亮度。
     disk_area = np.maximum(np.sum(mesh.areas[:, None]*mu_obs, axis=0), 1e-12)
 
@@ -544,9 +607,20 @@ def simulate(mesh: Mesh, gamma: float, config: ThermoConfig = ThermoConfig(),
         # 太阳光多次散射、可能的全局自加热以及坑壁之间的长波自加热依次进入边界。
         micro_q = _multiple_scattered_solar(direct_flux, view, config.bond_albedo)
         micro_q += global_incident[sl, None, :]
-        crater_t, chunk_residual = _crater_temperatures(
+        (crater_t, chunk_residual, chunk_converged, chunk_iterations,
+         chunk_unconverged, chunk_self_heating_converged,
+         chunk_self_heating_iterations,
+         chunk_self_heating_delta) = _crater_temperatures(
             micro_q, view, gamma, config)
         res2 = max(res2, chunk_residual)
+        all_converged &= chunk_converged
+        max_iterations = max(max_iterations, chunk_iterations)
+        unconverged_solves += chunk_unconverged
+        all_crater_self_heating_converged &= chunk_self_heating_converged
+        max_crater_self_heating_iterations = max(
+            max_crater_self_heating_iterations, chunk_self_heating_iterations)
+        max_crater_self_heating_delta = max(
+            max_crater_self_heating_delta, chunk_self_heating_delta)
         # thermal beaming：只有能从坑口看见且朝向观测者的热微面元才贡献辐射。
         obs_visible = _crater_aperture_visibility(positions, obs_local)
         projection = np.maximum(
@@ -565,8 +639,15 @@ def simulate(mesh: Mesh, gamma: float, config: ThermoConfig = ThermoConfig(),
                 aperture_weight[sl, None, :], axis=(0, 1))
         rough14_numerator += np.sum(common * planck_lambda(14., crater_t), axis=(0, 1))
     r4, r14 = rough4_numerator / disk_area, rough14_numerator / disk_area
-    return ModelCurves(phase, s4, r4, s14, r14, disk_area, max(res1, res2),
-                       smooth4_detector, crater4_detector_numerator, modeled_fill)
+    return ModelCurves(
+        phase, s4, r4, s14, r14, disk_area, max(res1, res2),
+        smooth4_detector, crater4_detector_numerator, modeled_fill,
+        thermal_solver_converged=all_converged,
+        max_thermal_solver_iterations=max_iterations,
+        unconverged_thermal_solves=unconverged_solves,
+        crater_self_heating_converged=all_crater_self_heating_converged,
+        max_crater_self_heating_iterations=max_crater_self_heating_iterations,
+        max_crater_self_heating_delta_k=max_crater_self_heating_delta)
 
 
 def crater_fraction_to_rms_deg(fraction: float) -> float:

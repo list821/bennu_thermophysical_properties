@@ -7,7 +7,8 @@ from bennu_atpm import (ModelCurves, ThermoConfig, crater_fraction_to_rms_deg,
                         ovirs_aperture_fill, rms_deg_to_crater_fraction, simulate,
                         _crater_aperture_visibility, _crater_local_geometry,
                         _facet_bases, _hemispherical_crater_geometry,
-                        _multiple_scattered_solar)
+                        _multiple_scattered_solar, _periodic_temperature, SIGMA,
+                        SOLAR_CONSTANT)
 
 
 class BennuAtpmTests(unittest.TestCase):
@@ -48,6 +49,76 @@ class BennuAtpmTests(unittest.TestCase):
         self.assertEqual(curves.smooth_4um.shape, (32,))
         self.assertTrue(np.all(np.isfinite(curves.crater_14um)))
         self.assertLess(curves.max_boundary_residual_w_m2, 1.)
+        self.assertTrue(curves.thermal_solver_converged)
+
+    def test_periodic_solver_reports_final_residual(self):
+        cfg = ThermoConfig(n_phase=96)
+        phase = np.arange(cfg.n_phase)/cfg.n_phase
+        absorbed = (900*np.maximum(np.cos(2*np.pi*phase), 0))[None, :]
+        solution = _periodic_temperature(
+            absorbed, 350.0, cfg, max_iter=1, tolerance=1e-12)
+        omega = 2*np.pi*np.fft.rfftfreq(
+            cfg.n_phase, d=cfg.period_s/cfg.n_phase)
+        conduction = np.fft.irfft(
+            np.fft.rfft(solution.temperature, axis=1) *
+            (350.0*np.sqrt(1j*omega))[None, :],
+            n=cfg.n_phase, axis=1)
+        actual = np.max(np.abs(
+            absorbed-cfg.emissivity*SIGMA*solution.temperature**4-conduction))
+        self.assertEqual(solution.iterations, 1)
+        self.assertFalse(solution.converged)
+        self.assertAlmostEqual(solution.residual_max_w_m2, float(actual), places=12)
+
+    def test_periodic_solver_harmonic_admittance_sign_and_period(self):
+        cfg = ThermoConfig(n_phase=384)
+        phase = np.arange(cfg.n_phase)/cfg.n_phase
+        omega = 2*np.pi/cfg.period_s
+        expected = 250.0+20.0*np.cos(2*np.pi*phase)
+        conduction = (350.0*20.0*np.sqrt(omega/2) *
+                      (np.cos(2*np.pi*phase)-np.sin(2*np.pi*phase)))
+        absorbed = (cfg.emissivity*SIGMA*expected**4+conduction)[None, :]
+        solution = _periodic_temperature(absorbed, 350.0, cfg)
+        self.assertTrue(solution.converged)
+        self.assertLess(np.max(np.abs(solution.temperature[0]-expected)), 0.01)
+
+    def test_phase_resolution_changes_fit_not_boundary_residual(self):
+        """Sharp shadows expose grid error even when every solve has a small residual."""
+        phase_counts = (96, 384, 650, 768)
+        gamma_grid = np.arange(330.0, 371.0, 10.0)
+
+        def forcing(n_phase):
+            cfg = ThermoConfig(n_phase=n_phase)
+            phase = np.arange(n_phase)/n_phase
+            sunlight = np.maximum(np.cos(2*np.pi*phase), 0)
+            visible = ~(((phase > .91) | (phase < .035)) |
+                        ((phase > .105) & (phase < .155)))
+            return cfg, ((1-cfg.bond_albedo)*SOLAR_CONSTANT /
+                         cfg.heliocentric_distance_au**2 *
+                         sunlight*visible)[None, :]
+
+        reference_cfg, reference_q = forcing(768)
+        reference = _periodic_temperature(
+            reference_q, 350.0, reference_cfg)
+        self.assertTrue(reference.converged)
+        reference_phase = np.arange(769)/768
+        reference_radiance = planck_lambda(
+            4.00038, np.r_[reference.temperature[0], reference.temperature[0, 0]])
+        best = {}
+        for n_phase in phase_counts:
+            cfg, absorbed = forcing(n_phase)
+            phase = np.arange(n_phase)/n_phase
+            observation = np.interp(phase, reference_phase, reference_radiance)
+            scores = []
+            for gamma in gamma_grid:
+                solution = _periodic_temperature(absorbed, gamma, cfg)
+                self.assertTrue(solution.converged)
+                prediction = planck_lambda(4.00038, solution.temperature[0])
+                scores.append(np.mean((prediction/observation-1)**2))
+            best[n_phase] = float(gamma_grid[np.argmin(scores)])
+        self.assertNotEqual(best[96], 350.0)
+        self.assertEqual(best[384], 350.0)
+        self.assertEqual(best[650], 350.0)
+        self.assertEqual(best[768], 350.0)
 
     def test_ovirs_aperture_fill_decreases_off_axis(self):
         """CK/IK 孔径耦合在中心指向最大，偏到响应边缘后必须降低。"""

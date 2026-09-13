@@ -534,7 +534,7 @@ def residual_fit_metrics(prediction, observation, sigma):
 
 def fit_gamma(mesh, datasets, combined, gammas, roughness_fraction, model_phases,
               crater_theta_bins=8, crater_azimuth_bins=16,
-              facet_chunk_size=64, self_heating_iterations=4,
+              facet_chunk_size=64, self_heating_iterations=24,
               global_shadowing=True, global_self_heating=True,
               view_factor_cache: Path | None = None,
               curve_cache: Path | None = None, fit_metric="mae"):
@@ -563,6 +563,7 @@ def fit_gamma(mesh, datasets, combined, gammas, roughness_fraction, model_phases
             digest = hashlib.sha256(
                 (f"{day}|{float(gamma):.12g}|{len(mesh.faces)}|{model_phases}|"
                  f"{crater_theta_bins}|{crater_azimuth_bins}|{roughness_fraction}|"
+                 f"self_heat={self_heating_iterations}|"
                  f"{global_shadowing}|{global_self_heating}|{mesh.source}").encode("utf-8"))
             if geometry is not None:
                 for values in geometry:
@@ -608,9 +609,9 @@ def fit_gamma(mesh, datasets, combined, gammas, roughness_fraction, model_phases
 
 
 def display_models(mesh, datasets, roughness_fraction,
-                   gammas=(330.0, 350.0, 370.0), model_phases=64,
+                   gammas=(330.0, 350.0, 370.0), model_phases=384,
                    crater_theta_bins=8, crater_azimuth_bins=16,
-                   facet_chunk_size=64, self_heating_iterations=4,
+                   facet_chunk_size=64, self_heating_iterations=24,
                    global_shadowing=True, global_self_heating=True,
                    view_factor_cache: Path | None = None):
     """独立计算指定热惯量的展示曲线，包括当前最佳值和论文参考值。"""
@@ -781,12 +782,12 @@ def main():
     parser.add_argument("--gamma-step", type=float, default=10.0)
     parser.add_argument("--fit-metric", choices=tuple(FIT_METRIC_LABELS), default="mae",
                         help="Gamma selection criterion: mae (default, no sigma/variance weighting), rmse, or chi2")
-    parser.add_argument("--model-phases", type=int, default=64)
+    parser.add_argument("--model-phases", type=int, default=384)
     parser.add_argument("--fit-facet-stride", type=int, default=16,
                         help="uniform plate subsampling for the full Gamma scan")
     parser.add_argument("--facet-chunk-size", type=int, default=64,
                         help="macro facets per temporary radiative-exchange block")
-    parser.add_argument("--self-heating-iterations", type=int, default=4)
+    parser.add_argument("--self-heating-iterations", type=int, default=24)
     parser.add_argument("--crater-theta-bins", type=int, default=8)
     parser.add_argument("--crater-azimuth-bins", type=int, default=16)
     parser.add_argument("--spice-kernels", type=Path,
@@ -889,6 +890,11 @@ def main():
             "underfilled_fov_warning": "author L3a array is unavailable; this run uses SPCv14+CK/IK aperture coupling plus model-independent repeat-cycle gain normalization"
         },
         "roughness": {"crater_fraction": 0.77, "rms_slope_deg": 43.0},
+        "thermal_time_grid": {
+            "model_phases": int(args.model_phases),
+            "boundary_residual_tolerance_W_m-2": 0.08,
+            "discretization_note": "boundary residual measures algebraic convergence on this grid; compare independent n_phase runs for discretization convergence"
+        },
         "roughness_physics": {
             "crater_aperture_ray_visibility": True,
             "view_factor_thermal_self_heating": True,
