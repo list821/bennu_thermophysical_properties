@@ -772,31 +772,35 @@ def main():
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", type=Path, default=Path("data/ovirs/full"))
+    parser.add_argument(
+        "--input", type=Path,
+        default=Path(r"E:\ChatGPT\热物理反演\data\ovirs\full"))
     parser.add_argument("--shape", type=Path,
-                        default=Path("data/shape/g_12560mm_spc_obj_0000n00000_v014.obj"),
+                        default=Path(
+                            r"E:\ChatGPT\热物理反演\data\shape\g_12560mm_spc_obj_0000n00000_v014.obj"),
                         help="Bennu OBJ (default: official SPCv14 12.56 m)")
     parser.add_argument("--output", type=Path, default=Path("output/supplementary_fig2b"))
     parser.add_argument("--gamma-min", type=float, default=0.0)
-    parser.add_argument("--gamma-max", type=float, default=600.0)
+    parser.add_argument("--gamma-max", type=float, default=400.0)
     parser.add_argument("--gamma-step", type=float, default=10.0)
     parser.add_argument("--fit-metric", choices=tuple(FIT_METRIC_LABELS), default="mae",
                         help="Gamma selection criterion: mae (default, no sigma/variance weighting), rmse, or chi2")
     parser.add_argument("--model-phases", type=int, default=384)
     parser.add_argument("--fit-facet-stride", type=int, default=16,
                         help="uniform plate subsampling for the full Gamma scan")
-    parser.add_argument("--facet-chunk-size", type=int, default=64,
+    parser.add_argument("--facet-chunk-size", type=int, default=16,
                         help="macro facets per temporary radiative-exchange block")
     parser.add_argument("--self-heating-iterations", type=int, default=24)
     parser.add_argument("--crater-theta-bins", type=int, default=8)
     parser.add_argument("--crater-azimuth-bins", type=int, default=16)
     parser.add_argument("--spice-kernels", type=Path,
-                        default=Path(r"D:\ATPM\data\spice\kernels"),
+                        default=Path(r"E:\ChatGPT\热物理反演\data\spice\kernels"),
                         help="ASCII-only path required by CSPICE on Windows")
     parser.add_argument("--disable-global-shadowing", action="store_true")
     parser.add_argument("--disable-global-self-heating", action="store_true")
     parser.add_argument("--view-factor-cache", type=Path,
-                        default=Path("data/shape/global_view_factors_spcv14.npz"))
+                        default=Path(
+                            r"E:\ChatGPT\热物理反演\data\shape\global_view_factors_spcv14.npz"))
     parser.add_argument("--max-boresight-angle-deg", type=float, default=0.03,
                         help="reject frames whose CK/IK boresight is farther from Bennu center")
     parser.add_argument("--fill-factor-min", type=float, default=0.32)

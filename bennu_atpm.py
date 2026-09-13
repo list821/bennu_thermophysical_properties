@@ -37,7 +37,7 @@ class ThermoConfig:
     # 无法充分收敛坑口阴影边缘及定向热辐射（thermal beaming）。
     crater_theta_bins: int = 8
     crater_azimuth_bins: int = 16
-    facet_chunk_size: int = 64
+    facet_chunk_size: int = 16
     crater_self_heating_iterations: int = 24
     crater_self_heating_tolerance_k: float = 0.08
     thermal_albedo: float = 0.0
